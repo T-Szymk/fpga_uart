@@ -1,35 +1,41 @@
 /*------------------------------------------------------------------------------
- Title      : FPGA UART Baud Generator
- Project    : FPGA UART
+-- Title      : FPGA UART Baud Generator
+-- Project    : FPGA UART
 --------------------------------------------------------------------------------
- File       : baud_generator.sv
- Author(s)  : Thomas Szymkowiak
- Company    : TUNI
- Created    : 2023-03-04
- Design     : baud_generator
- Platform   : -
- Standard   : Verilog '05
+-- File       : baud_generator.v
+-- Author(s)  : Thomas Szymkowiak
+-- Company    : TUNI
+-- Created    : 2023-03-04
+-- Design     : baud_generator
+-- Platform   : -
+-- Standard   : Verilog '05
 --------------------------------------------------------------------------------
- Description: 
+-- Description: Baud rate generator to be used within the FPGA UART. The Baud 
+--              rate can be set using the sel signal. The following Baud rates
+--              are supported: 9600, 19200, 115200 and 256000.
+--              The generator toggles an enable signal for one clock cycle at a 
+--              frequency equivalent to the Baud Rate / 16. This can be used by
+--              other components within the UART for timing Rx and Tx processes.
 --------------------------------------------------------------------------------
- Revisions:
- Date        Version  Author  Description
- 2023-03-04  1.0      TZS     Created
+-- Revisions:
+-- Date        Version  Author  Description
+-- 2023-03-04  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 
 module baud_generator #(
-  parameter unsigned TOP_CLK_FREQ_HZ = 50_000_000
+  //! Top clock frequency
+  parameter unsigned TOP_CLK_FREQ_HZ = 50000000
 ) (
-  input  wire         clk_i,
-  input  wire         rst_i,
-  input  wire [2-1:0] baud_sel_i,
-  output wire         baud_en_o
+  input  wire         clk_i,      //! Clock
+  input  wire         rst_i,      //! Active-high synchronous reset
+  input  wire [2-1:0] baud_sel_i, //! Baud-rate select signal
+  output wire         baud_en_o   //! Baud clock enable signal
 );
 
-  localparam integer MIN_SAMPLE_FREQ_9600_BAUD_HZ   =   153_600;
-  localparam integer MIN_SAMPLE_FREQ_19200_BAUD_HZ  =   307_200;
-  localparam integer MIN_SAMPLE_FREQ_115200_BAUD_HZ = 1_843_200;
-  localparam integer MIN_SAMPLE_FREQ_256000_BAUD_HZ = 4_086_000;
+  localparam integer MIN_SAMPLE_FREQ_9600_BAUD_HZ   =  153600;
+  localparam integer MIN_SAMPLE_FREQ_19200_BAUD_HZ  =  307200;
+  localparam integer MIN_SAMPLE_FREQ_115200_BAUD_HZ = 1843200;
+  localparam integer MIN_SAMPLE_FREQ_256000_BAUD_HZ = 4086000;
 
   localparam integer SAMPLE_COUNT_9600_BAUD   = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_9600_BAUD_HZ );
   localparam integer SAMPLE_COUNT_19200_BAUD  = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_19200_BAUD_HZ );
@@ -38,16 +44,21 @@ module baud_generator #(
 
   localparam integer SAMPLE_COUNT_WIDTH = $clog2(SAMPLE_COUNT_256000_BAUD + 1);
 
+  //! Baud clock enable signal
   reg baud_en_r     = 1'b0;
-  reg baud_update_s = 1'b0;
-
+  //! Indicates baud rate select has been updated
+  reg select_update_s = 1'b0;
+  //! Baud rate select register to detect value update
   reg [                 2-1:0] baud_sel_r         ; 
+  //! Register holding maximum value of sample counter 
   reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_max_s ;
+  //! Sample counter register
   reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_r     ;
 
   assign baud_en_o = baud_en_r;
   
-  always @(posedge clk_i) begin
+  //! Sample counter logic 
+  always @(posedge clk_i) begin : sync_sample_count
 
     if ( rst_i ) begin 
       
@@ -56,7 +67,7 @@ module baud_generator #(
 
     end else begin 
       
-      if ( (sample_count_r == ( sample_count_max_s - 1)) || baud_update_s ) begin 
+      if ( (sample_count_r == ( sample_count_max_s - 1)) || select_update_s ) begin 
         sample_count_r <= 0;
         baud_en_r      <= 1'b1;
       end else begin 
@@ -67,7 +78,7 @@ module baud_generator #(
     end
   end
   
-  // use register to determine if baud_sel has been updated
+  //! Assigns baud_sel into a register to determine if baud_sel has been updated
   always @(posedge clk_i) begin : sync_baud_sel
   
     if ( rst_i ) begin 
@@ -78,7 +89,7 @@ module baud_generator #(
   
   end
 
-  // process to assign max value of baud clock counter
+  //! Assign max value of baud clock counter
   always @( baud_sel_i ) begin : comb_baud_count_select
 
     case(baud_sel_i)
@@ -103,13 +114,13 @@ module baud_generator #(
 
   end
 
-  // raise baud update if select value is updated for 1 clock cycle
+  //! Raise baud update if select value is updated for 1 clock cycle
   always @( baud_sel_r, baud_sel_i ) begin : sync_baud_update
 
     if ( baud_sel_r != baud_sel_i ) begin 
-      baud_update_s = 1'b1;
+      select_update_s = 1'b1;
     end else begin 
-      baud_update_s = 1'b0;
+      select_update_s = 1'b0;
     end
 
   end
