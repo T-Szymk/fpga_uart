@@ -32,6 +32,8 @@ module baud_generator #(
   output wire         baud_en_o   //! Baud clock enable signal
 );
 
+/*** TYPES/CONSTANTS/DECLARATIONS *********************************************/
+
   localparam integer MIN_SAMPLE_FREQ_9600_BAUD_HZ   =  153600;
   localparam integer MIN_SAMPLE_FREQ_19200_BAUD_HZ  =  307200;
   localparam integer MIN_SAMPLE_FREQ_115200_BAUD_HZ = 1843200;
@@ -49,13 +51,17 @@ module baud_generator #(
   //! Indicates baud rate select has been updated
   reg select_update_s = 1'b0;
   //! Baud rate select register to detect value update
-  reg [                 2-1:0] baud_sel_r         ; 
+  reg [                 2-1:0] baud_sel_r; 
   //! Register holding maximum value of sample counter 
-  reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_max_s ;
+  reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_max_s;
   //! Sample counter register
-  reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_r     ;
+  reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_r;
+
+/*** Assignments **************************************************************/
 
   assign baud_en_o = baud_en_r;
+
+/*** Logic ********************************************************************/
   
   //! Sample counter logic 
   always @(posedge clk_i) begin : sync_sample_count
