@@ -11,6 +11,11 @@ Target Baud rates:
 * 115200
 * 256000
 
+Configuration:
+* Data width = 5 - 8 bits,
+* Stop = 1 - 3 bits,
+* Optional parity bit.
+
 Target support for APB registers for control. 
 
 Configurable FIFO stores Tx/Rx data. 
