@@ -16,12 +16,13 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-03-11  1.0      TZS     Created
+-- 2023-04-16  1.1      TZS     Connected tx_done_o
 ------------------------------------------------------------------------------*/
 
 module tx_module (
   input  wire         clk_i,
   input  wire         rst_i,
-  input  wire         baud_en_i, 
+  input  wire         baud_en_i,
   input  wire         tx_en_i,
   input  wire         tx_start_i,
   input  wire [5-1:0] tx_conf_i, // {data_size[1:0], stop_size {1:0}, parity_en}
@@ -42,21 +43,20 @@ module tx_module (
     SendStop   = 3'b101,
     Done       = 3'b110;
 
-  localparam DataCounterMax   = 3'd7;
-  localparam StopCounterMax   = 2'd3;
-  localparam SampleCounterMax = 4'd15;
+  localparam unsigned SampleCounterMax = 4'd15;
 
   wire sample_count_done_s;
+  wire parity_bit_s;
 
-  reg load_tx_conf_s;
   reg uart_tx_s;
-  reg parity_bit_s;  
+  reg load_tx_conf_r;
   reg parity_en_r;
   reg busy_r;
-  
+  reg tx_done_r;
+
   reg [3-1:0] c_state_r, n_state_s;
-  reg [3-1:0] data_counter_r;  
-  reg [2-1:0] stop_counter_r; 
+  reg [3-1:0] data_counter_r;
+  reg [2-1:0] stop_counter_r;
   reg [4-1:0] sample_counter_r;
   reg [8-1:0] tx_data_r;
   reg [3-1:0] data_counter_max_r;
@@ -64,70 +64,72 @@ module tx_module (
 
 /*** FSM **********************************************************************/
 
-  always @(posedge clk_i or negedge rst_i) begin : sync_fsm_next_state
-    if ( ~rst_i ) begin 
+  always @(posedge clk_i or posedge rst_i) begin : sync_fsm_next_state
+    if ( rst_i ) begin
       c_state_r <= Reset;
-    end else if ( baud_en_i ) begin 
+    end else if ( baud_en_i ) begin
       c_state_r <= n_state_s;
     end
   end
 
   always @(*) begin : comb_fsm_next_state
-    
+
     n_state_s      = c_state_r;
-    load_tx_conf_s = 1'b0;
 
     case(c_state_r)
-      
-      Reset      : begin                                                    /**/         
+
+      Reset      : begin                                                    /**/
         if ( tx_en_i ) begin
           n_state_s = Idle;
         end
       end
 
-      Idle       : begin                                                    /**/ 
-        if ( (tx_start_i == 1'b1) ) begin 
+      Idle       : begin                                                    /**/
+        if ( (tx_start_i == 1'b1) ) begin
           n_state_s      = SendStart;
-          load_tx_conf_s = 1'b1;
-        end   
+        end
       end
-      
-      SendStart  : begin                                                    /**/ 
-        if ( sample_count_done_s ) begin 
+
+      SendStart  : begin                                                    /**/
+        if ( sample_count_done_s ) begin
           n_state_s = SendData;
         end
-      end      
-      
-      SendData   : begin                                                    /**/ 
-        if ( sample_count_done_s && (data_counter_r == DataCounterMax) ) begin
-          if ( parity_en_r ) begin 
+      end
+
+      SendData   : begin                                                    /**/
+        if ( sample_count_done_s && (data_counter_r == data_counter_max_r) ) begin
+          if ( parity_en_r ) begin
             n_state_s = SendParity;
           end else begin
             n_state_s = SendStop;
           end
         end
       end
-      
-      SendParity : begin                                                    /**/ 
+
+      SendParity : begin                                                    /**/
         if ( sample_count_done_s ) begin 
           n_state_s = SendStop;
-        end 
+        end
       end
-      
-      SendStop   : begin                                                    /**/ 
-        if ( sample_count_done_s && (stop_counter_r == StopCounterMax) ) begin
+
+      SendStop   : begin                                                    /**/
+        if ( sample_count_done_s && (stop_counter_r == stop_counter_max_r) ) begin
           n_state_s = Done;
         end
       end
-      
-      Done       : begin                                                    /**/ 
-        n_state_s = Idle;
+
+      Done       : begin                                                    /**/
+        if ( tx_en_i ) begin
+          n_state_s = Idle;
+        end else begin
+          n_state_s = Reset;
+        end
       end
-      
-      default    : begin                                                    /**/ 
+
+      default    : begin                                                    /**/
         n_state_s = Reset;
       end
-      
+
     endcase
   end
 
@@ -135,30 +137,31 @@ module tx_module (
 
   assign sample_count_done_s = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
 
-  always @(posedge clk_i or negedge rst_i) begin : sync_bit_counter 
+  always @(posedge clk_i or posedge rst_i) begin : sync_bit_counter
 
-    if ( ~rst_i ) begin
+    if ( rst_i ) begin
 
       sample_counter_r <= 0;
       data_counter_r   <= 0;
       stop_counter_r   <= 0;
 
-    end else if ( baud_en_i ) begin 
-    
-      if ( c_state_r == SendStart || c_state_r == SendData || c_state_r == SendParity || c_state_r == SendStop ) begin 
-        sample_counter_r <= (sample_counter_r == SampleCounterMax) ? 0 : sample_counter_r + 1; 
+    end else if ( baud_en_i ) begin
+
+      if ( c_state_r == SendStart || c_state_r == SendData ||
+           c_state_r == SendParity || c_state_r == SendStop ) begin
+        sample_counter_r <= (sample_counter_r == SampleCounterMax) ? 0 : sample_counter_r + 1;
       end
 
-      if ( sample_counter_r ==  SampleCounterMax ) begin 
+      if ( sample_counter_r ==  SampleCounterMax ) begin
 
         case ( c_state_r )
-          SendData : begin 
-            data_counter_r <= (data_counter_r == DataCounterMax) ? 0 : data_counter_r + 1; 
+          SendData : begin
+            data_counter_r <= (data_counter_r == data_counter_max_r) ? 0 : data_counter_r + 1;
           end
-          SendStop : begin 
-            stop_counter_r <= (stop_counter_r == StopCounterMax) ? 0 : stop_counter_r + 1;
+          SendStop : begin
+            stop_counter_r <= (stop_counter_r == stop_counter_max_r) ? 0 : stop_counter_r + 1;
           end
-          default : begin 
+          default : begin
             data_counter_r <= 0;
             stop_counter_r <= 0;
           end
@@ -168,37 +171,51 @@ module tx_module (
     end
   end
 
-/*** Busy *********************************************************************/
+/*** Busy  + Done *************************************************************/
 
-  always @(posedge clk_i or negedge rst_i) begin 
-    
-    if ( ~rst_i ) begin 
-      busy_r <= 1'b0;
-    end else if ( baud_en_i ) begin 
-      if (n_state_s == SendStart) begin 
+  always @(posedge clk_i or posedge rst_i) begin 
+
+    if ( rst_i ) begin
+      busy_r         <= 1'b0;
+      tx_done_r      <= 1'b0;
+      load_tx_conf_r <= 1'b0;
+    end else if ( baud_en_i ) begin
+
+      tx_done_r      <= 1'b0;
+      load_tx_conf_r <= 1'b0;
+
+      if ( n_state_s == SendStart ) begin
         busy_r <= 1'b1;
-      end else if ( n_state_s == Done ) begin 
-        busy_r <= 1'b0;
+      end else if ( n_state_s == Done ) begin
+        busy_r    <= 1'b0;
+        tx_done_r <= 1'b1;
       end
+
+      if ( n_state_s == SendStart ) begin 
+        load_tx_conf_r <= 1'b1;
+      end
+
     end
-  
   end
 
-/*** Tx Data and Output *******************************************************/
+  assign tx_done_o = tx_done_r;
+
+/*** Tx Data, Parity and Output ***********************************************/
 
   assign uart_tx_o = uart_tx_s;
+  assign parity_bit_s = ^tx_data_r;
 
-  always @(posedge clk_i or negedge rst_i) begin : sync_tx_conf_load
-  
-    if ( ~rst_i ) begin 
+  always @(posedge clk_i or posedge rst_i) begin : sync_tx_conf_load
+
+    if ( rst_i ) begin
       tx_data_r <= 0;
-    end else begin 
-      if ( load_tx_conf_s ) begin 
+    end else begin
+      if ( load_tx_conf_r ) begin
         tx_data_r          <= tx_data_i;
         parity_en_r        <= tx_conf_i[0];
         stop_counter_max_r <= tx_conf_i[2:1];
-        data_counter_max_r <= 3'd4 + tx_conf_i[4:3];        
-      end       
+        data_counter_max_r <= 3'd4 + tx_conf_i[4:3];
+      end
     end
 
   end
@@ -206,19 +223,19 @@ module tx_module (
   always @(*) begin : comb_uart_tx_out
 
     case ( c_state_r )
-      SendStart : begin 
+      SendStart : begin
         uart_tx_s = 1'b1;
       end
-      SendData : begin 
+      SendData : begin
         uart_tx_s = tx_data_r[data_counter_r];
       end
-      SendParity : begin 
+      SendParity : begin
         uart_tx_s = parity_bit_s;
       end
-      SendStop : begin 
+      SendStop : begin
         uart_tx_s = 1'h0;
-      end 
-      default : begin 
+      end
+      default : begin
         uart_tx_s = 1'b0;
       end
     endcase
