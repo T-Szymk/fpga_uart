@@ -50,11 +50,11 @@ module tx_module (
 
   reg load_tx_conf_s;
   reg uart_tx_s;
-  reg parity_bit_s;
-  reg c_state_r, n_state_s;
+  reg parity_bit_s;  
   reg parity_en_r;
   reg busy_r;
-
+  
+  reg [3-1:0] c_state_r, n_state_s;
   reg [3-1:0] data_counter_r;  
   reg [2-1:0] stop_counter_r; 
   reg [4-1:0] sample_counter_r;
@@ -63,6 +63,14 @@ module tx_module (
   reg [2-1:0] stop_counter_max_r;
 
 /*** FSM **********************************************************************/
+
+  always @(posedge clk_i or negedge rst_i) begin : sync_fsm_next_state
+    if ( ~rst_i ) begin 
+      c_state_r <= Reset;
+    end else if ( baud_en_i ) begin 
+      c_state_r <= n_state_s;
+    end
+  end
 
   always @(*) begin : comb_fsm_next_state
     
@@ -79,9 +87,9 @@ module tx_module (
 
       Idle       : begin                                                    /**/ 
         if ( (tx_start_i == 1'b1) ) begin 
-          n_state_s = SendStart;
+          n_state_s      = SendStart;
           load_tx_conf_s = 1'b1;
-        end
+        end   
       end
       
       SendStart  : begin                                                    /**/ 
@@ -121,14 +129,6 @@ module tx_module (
       end
       
     endcase
-  end
-
-  always @(posedge clk_i or negedge rst_i) begin : sync_fsm_next_state
-    if ( ~rst_i ) begin 
-      c_state_r <= Reset;
-    end else if ( baud_en_i ) begin 
-      c_state_r <= n_state_s;
-    end
   end
 
 /*** Bit Counters *************************************************************/
@@ -194,9 +194,9 @@ module tx_module (
       tx_data_r <= 0;
     end else begin 
       if ( load_tx_conf_s ) begin 
-        tx_data_r <= tx_data_i;
-        parity_en_r <= tx_conf_i[0];
-        stop_counter_max_r <= tx_conf_i[1:2];
+        tx_data_r          <= tx_data_i;
+        parity_en_r        <= tx_conf_i[0];
+        stop_counter_max_r <= tx_conf_i[2:1];
         data_counter_max_r <= 3'd4 + tx_conf_i[4:3];        
       end       
     end

@@ -1,0 +1,19 @@
+/*------------------------------------------------------------------------------
+-- Title      : FPGA UART Receive Module
+-- Project    : FPGA UART
+--------------------------------------------------------------------------------
+-- File       : rx_module.v
+-- Author(s)  : Thomas Szymkowiak
+-- Company    : TUNI
+-- Created    : 2023-04-16
+-- Design     : baud_generator
+-- Platform   : -
+-- Standard   : Verilog '05
+--------------------------------------------------------------------------------
+-- Description: Module to perform receipt of UART data from the uart_rx_i
+--              port.
+--------------------------------------------------------------------------------
+-- Revisions:
+-- Date        Version  Author  Description
+-- 2023-04-16  1.0      TZS     Created
+------------------------------------------------------------------------------*/
