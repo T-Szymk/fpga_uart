@@ -19,7 +19,14 @@
 -- 2023-04-16  1.1      TZS     Connected tx_done_o
 ------------------------------------------------------------------------------*/
 
-module tx_module (
+module tx_module #(
+  parameter  unsigned MAX_DATA_WIDTH       = 8,
+  parameter  unsigned DATA_COUNTER_WIDTH   = 3,
+  parameter  unsigned STOP_CONF_WIDTH      = 2,
+  parameter  unsigned DATA_CONF_WIDTH      = 3,
+  parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
+  localparam unsigned TotalConfWidth = STOP_CONF_WIDTH + DATA_CONF_WIDTH
+) (
   input  wire         clk_i,
   input  wire         rst_i,
   input  wire         baud_en_i,
@@ -55,12 +62,12 @@ module tx_module (
   reg tx_done_r;
 
   reg [3-1:0] c_state_r, n_state_s;
-  reg [3-1:0] data_counter_r;
-  reg [2-1:0] stop_counter_r;
-  reg [4-1:0] sample_counter_r;
-  reg [8-1:0] tx_data_r;
-  reg [3-1:0] data_counter_max_r;
-  reg [2-1:0] stop_counter_max_r;
+  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_r;
+  reg [     STOP_CONF_WIDTH-1:0] stop_counter_r;
+  reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r;
+  reg [      MAX_DATA_WIDTH-1:0] tx_data_r;
+  reg [     DATA_CONF_WIDTH-1:0] data_counter_max_r;
+  reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r;
 
 /*** FSM **********************************************************************/
 
@@ -141,9 +148,9 @@ module tx_module (
 
     if ( rst_i ) begin
 
-      sample_counter_r <= 0;
-      data_counter_r   <= 0;
-      stop_counter_r   <= 0;
+      sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
+      data_counter_r   <= {DATA_COUNTER_WIDTH{1'b0}};
+      stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
 
     end else if ( baud_en_i ) begin
 
@@ -173,7 +180,7 @@ module tx_module (
 
 /*** Busy  + Done *************************************************************/
 
-  always @(posedge clk_i or posedge rst_i) begin 
+  always @(posedge clk_i or posedge rst_i) begin : sync_busy_done
 
     if ( rst_i ) begin
       busy_r         <= 1'b0;
@@ -200,15 +207,15 @@ module tx_module (
 
   assign tx_done_o = tx_done_r;
 
-/*** Tx Data, Parity and Output ***********************************************/
-
-  assign uart_tx_o = uart_tx_s;
-  assign parity_bit_s = ^tx_data_r;
+/*** Load configuration *******************************************************/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_tx_conf_load
 
     if ( rst_i ) begin
-      tx_data_r <= 0;
+      tx_data_r          <= {MAX_DATA_WIDTH{1'b0}};
+      parity_en_r        <= 1'b0;
+      stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
+      data_counter_max_r <= {DATA_CONF_WIDTH{1'b0}};
     end else begin
       if ( load_tx_conf_r ) begin
         tx_data_r          <= tx_data_i;
@@ -219,6 +226,11 @@ module tx_module (
     end
 
   end
+
+/*** Tx Data, Parity and Output ***********************************************/
+
+  assign uart_tx_o = uart_tx_s;
+  assign parity_bit_s = ^tx_data_r;
 
   always @(*) begin : comb_uart_tx_out
 

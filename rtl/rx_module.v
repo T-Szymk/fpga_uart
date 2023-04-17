@@ -18,18 +18,25 @@
 -- 2023-04-16  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 
-module rx_module (
+module rx_module #(
+  parameter  unsigned MAX_DATA_WIDTH       = 8,
+  parameter  unsigned DATA_COUNTER_WIDTH   = 3,
+  parameter  unsigned STOP_CONF_WIDTH      = 2,
+  parameter  unsigned DATA_CONF_WIDTH      = 3,
+  parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
+  localparam unsigned TotalConfWidth = STOP_CONF_WIDTH + DATA_CONF_WIDTH
+) (
 
-  input  wire         clk_i,
-  input  wire         rst_i,
-  input  wire         baud_en_i,
-  input  wire         rx_en_i,
-  input  wire         uart_rx_i,
-  input  wire [5-1:0] rx_conf_i,
+  input  wire                      clk_i,
+  input  wire                      rst_i,
+  input  wire                      baud_en_i,
+  input  wire                      rx_en_i,
+  input  wire                      uart_rx_i,
+  input  wire [TotalConfWidth-1:0] rx_conf_i,
 
-  output wire         rx_done_o,
-  output wire         parity_error_o,
-  output wire [8-1:0] rx_data_o
+  output wire                      rx_done_o,
+  output wire                      parity_error_o,
+  output wire [MAX_DATA_WIDTH-1:0] rx_data_o
 );
 
 /*** TYPES/CONSTANTS/DECLARATIONS *********************************************/
@@ -46,7 +53,7 @@ module rx_module (
   localparam unsigned SampleCounterMax = 4'd15;
   localparam unsigned SampleCountMid   = 4'd7;
 
-  wire sample_count_done_s;
+  wire last_sample_s;
   wire last_data_sample_s;
 
   reg uart_rx_s;
@@ -55,15 +62,15 @@ module rx_module (
   reg parity_en_r;
   reg busy_r;
   reg rx_done_r;
+  reg parity_error_r;
 
   reg [3-1:0] c_state_r, n_state_s;
-  reg [3-1:0] data_counter_r;
-  reg [2-1:0] stop_counter_r;
-  reg [4-1:0] sample_counter_r;
-  reg [8-1:0] rx_data_r;
-  reg [2-1:0] rx_stop_r;
-  reg [3-1:0] data_counter_max_r;
-  reg [2-1:0] stop_counter_max_r;
+  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_r;
+  reg [     STOP_CONF_WIDTH-1:0] stop_counter_r;
+  reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r;
+  reg [      MAX_DATA_WIDTH-1:0] rx_data_r;
+  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_max_r;
+  reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r;
 
 /*** FSM **********************************************************************/
 
@@ -94,7 +101,7 @@ module rx_module (
       end
 
       RecvStart  : begin                                                    /**/
-        if ( sample_count_done_s ) begin 
+        if ( last_sample_s ) begin
           n_state_s = RecvData;
         end
       end
@@ -120,7 +127,7 @@ module rx_module (
       Done       : begin                                                    /**/
         if ( rx_en_i ) begin
           n_state_s = Idle;
-        end else begin 
+        end else begin
           n_state_s = Reset;
         end
       end
@@ -132,9 +139,9 @@ module rx_module (
     endcase
   end
 
-/*** Bit Counters *************************************************************/
+/*** Bit Counters + Data capture **********************************************/
 
-  assign sample_count_done_s = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
+  assign last_sample_s       = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
   assign last_data_sample_s  = ((sample_counter_r == SampleCounterMax) &&
                                 (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
 
@@ -142,14 +149,16 @@ module rx_module (
 
     if ( rst_i ) begin
 
-      sample_counter_r <= 0;
-      data_counter_r   <= 0;
-      stop_counter_r   <= 0;
+      sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
+      data_counter_r   <= {DATA_COUNTER_WIDTH{1'b0}};
+      stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
+      rx_data_r        <= {MAX_DATA_WIDTH{1'b0}};
+      parity_r         <= 1'b0;
 
     end else if ( baud_en_i ) begin
 
       if ( c_state_r == RecvStart || c_state_r == RecvData ||
-           c_state_r == RecvParity || c_state_r == RecvStop ) begin 
+           c_state_r == RecvParity || c_state_r == RecvStop ) begin
         sample_counter_r <= (sample_counter_r == SampleCounterMax) ? 0 : sample_counter_r + 1;
       end
 
@@ -162,9 +171,30 @@ module rx_module (
           RecvStop : begin
             stop_counter_r <= (stop_counter_r == stop_counter_max_r) ? 0 : stop_counter_r + 1;
           end
+          RecvParity : begin
+            parity_error_r <= (parity_r == (^rx_data_r)) ? 1'b0 : 1'b1;
+          end
           default : begin
             data_counter_r <= 0;
             stop_counter_r <= 0;
+          end
+        endcase
+
+      end else if ( sample_counter_r == SampleCountMid ) begin
+
+        case ( c_state_r )
+          Reset : begin
+            rx_data_r <= {MAX_DATA_WIDTH{1'b0}};
+            parity_r  <= 1'b0;
+          end
+          RecvData : begin
+            rx_data_r[data_counter_r] <= uart_rx_i;
+          end
+          RecvParity : begin
+            parity_r <= uart_rx_i;
+          end
+          default : begin
+            // do nothing
           end
         endcase
 
@@ -174,7 +204,7 @@ module rx_module (
 
 /*** Busy  + Done *************************************************************/
 
-  always @(posedge clk_i or posedge rst_i) begin 
+  always @(posedge clk_i or posedge rst_i) begin : sync_busy_done
 
     if ( rst_i ) begin
       busy_r         <= 1'b0;
@@ -186,7 +216,7 @@ module rx_module (
       load_rx_conf_r <= 1'b0;
 
       if ( n_state_s == RecvStart ) begin
-        busy_r <= 1'b1;
+        busy_r    <= 1'b1;
       end else if ( n_state_s == Done ) begin
         busy_r    <= 1'b0;
         rx_done_r <= 1'b1;
@@ -200,5 +230,23 @@ module rx_module (
   end
 
   assign rx_done_o = rx_done_r;
+
+/*** Load configuration *******************************************************/
+
+  always @(posedge clk_i or posedge rst_i) begin : sync_rx_conf_load
+
+    if (rst_i) begin
+      parity_en_r        <= 1'b0;
+      stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
+      data_counter_max_r <= {DATA_CONF_WIDTH{1'b0}};
+    end else begin
+      if (load_rx_conf_r) begin
+        parity_en_r        <= rx_conf_i[0];
+        stop_counter_max_r <= rx_conf_i[2:1];
+        data_counter_max_r <= 3'd4 + rx_conf_i[4:3];
+      end
+    end
+
+  end
 
 endmodule // rx_module
