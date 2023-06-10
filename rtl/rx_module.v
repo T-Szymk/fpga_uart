@@ -53,11 +53,12 @@ module rx_module #(
   localparam unsigned SampleCounterMax = 4'd15;
   localparam unsigned SampleCountMid   = 4'd7;
 
-  wire last_sample_s;
+  wire final_sample_s;
   wire last_data_sample_s;
 
   reg uart_rx_s;
   reg load_rx_conf_r;
+  reg start_r;
   reg parity_r;
   reg parity_en_r;
   reg busy_r;
@@ -84,7 +85,7 @@ module rx_module #(
 
   always @(*) begin : comb_fsm_next_state
 
-    n_state_s      = c_state_r;
+    n_state_s = c_state_r;
 
     case(c_state_r)
 
@@ -101,8 +102,10 @@ module rx_module #(
       end
 
       RecvStart  : begin                                                    /**/
-        if ( last_sample_s ) begin
-          n_state_s = RecvData;
+        if ( final_sample_s) begin
+          /* check if start bit value was maintained throughout sample period
+             if not, assume glitch and return to idle */
+          n_state_s = start_r ? RecvData : Idle;
         end
       end
 
@@ -113,13 +116,13 @@ module rx_module #(
       end
 
       RecvParity : begin                                                    /**/
-        if ( sample_counter_r == SampleCounterMax ) begin
+        if ( final_sample_s ) begin
           n_state_s = RecvStop;
         end
       end
 
       RecvStop   : begin                                                    /**/
-        if ( sample_counter_r == SampleCounterMax ) begin
+        if ( final_sample_s ) begin
           n_state_s = RecvStop;
         end
       end
@@ -139,11 +142,11 @@ module rx_module #(
     endcase
   end
 
-/*** Bit Counters + Data capture **********************************************/
+/*** Bit Counters + Data capture + Parity *************************************/
 
-  assign last_sample_s       = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
-  assign last_data_sample_s  = ((sample_counter_r == SampleCounterMax) &&
-                                (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
+  assign final_sample_s     = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
+  assign last_data_sample_s = ((sample_counter_r == SampleCounterMax) &&
+                               (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
 
   always @(posedge clk_i or posedge rst_i) begin : sync_bit_counter
 
@@ -153,26 +156,37 @@ module rx_module #(
       data_counter_r   <= {DATA_COUNTER_WIDTH{1'b0}};
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
       rx_data_r        <= {MAX_DATA_WIDTH{1'b0}};
+      start_r          <= 1'b0;
       parity_r         <= 1'b0;
+      parity_error_r   <= 1'b0;
 
-    end else if ( baud_en_i ) begin
+    end else if (baud_en_i) begin
 
-      if ( c_state_r == RecvStart || c_state_r == RecvData ||
-           c_state_r == RecvParity || c_state_r == RecvStop ) begin
+      // increment sample counter values with each tick of baud clk (clk_i)
+      if (c_state_r == RecvStart  || c_state_r == RecvData ||
+          c_state_r == RecvParity || c_state_r == RecvStop) begin
         sample_counter_r <= (sample_counter_r == SampleCounterMax) ? 0 : sample_counter_r + 1;
       end
 
-      if ( sample_counter_r ==  SampleCounterMax ) begin
+      // parity checking
+      if (parity_en_r) begin
+        if ( (c_state_r == RecvParity) && final_sample_s ) begin
+          // parity error remains high until next correct message is received while parity enabled
+          parity_error_r <= (parity_r == (^rx_data_r)) ? 1'b0 : 1'b1;
+        end
+      end else begin
+        parity_error_r <= 1'b0;
+      end
 
-        case ( c_state_r )
+      // manage bit counter values at final sample of each bit
+      if ( final_sample_s ) begin
+
+        case (c_state_r)
           RecvData : begin
             data_counter_r <= (data_counter_r == data_counter_max_r) ? 0 : data_counter_r + 1;
           end
           RecvStop : begin
             stop_counter_r <= (stop_counter_r == stop_counter_max_r) ? 0 : stop_counter_r + 1;
-          end
-          RecvParity : begin
-            parity_error_r <= (parity_r == (^rx_data_r)) ? 1'b0 : 1'b1;
           end
           default : begin
             data_counter_r <= 0;
@@ -180,12 +194,16 @@ module rx_module #(
           end
         endcase
 
-      end else if ( sample_counter_r == SampleCountMid ) begin
+      // sample RX line when at midpoint of bit
+      end else if (sample_counter_r == SampleCountMid) begin
 
         case ( c_state_r )
           Reset : begin
             rx_data_r <= {MAX_DATA_WIDTH{1'b0}};
             parity_r  <= 1'b0;
+          end
+          RecvStart : begin
+            start_r <= uart_rx_i;
           end
           RecvData : begin
             rx_data_r[data_counter_r] <= uart_rx_i;
@@ -206,23 +224,23 @@ module rx_module #(
 
   always @(posedge clk_i or posedge rst_i) begin : sync_busy_done
 
-    if ( rst_i ) begin
+    if (rst_i) begin
       busy_r         <= 1'b0;
       rx_done_r      <= 1'b0;
       load_rx_conf_r <= 1'b0;
-    end else if ( baud_en_i ) begin
+    end else if (baud_en_i) begin
 
       rx_done_r      <= 1'b0;
       load_rx_conf_r <= 1'b0;
 
-      if ( n_state_s == RecvStart ) begin
+      if (n_state_s == RecvStart) begin
         busy_r    <= 1'b1;
-      end else if ( n_state_s == Done ) begin
+      end else if (n_state_s == Done) begin
         busy_r    <= 1'b0;
-        rx_done_r <= 1'b1;
+        rx_done_r <= 1'b1; // rx_done high for 1 clk period
       end
-
-      if ( c_state_r == Reset && n_state_s == Idle ) begin
+      // load configuration data whenever moving into or staying in idle
+      if (n_state_s == Idle) begin
         load_rx_conf_r <= 1'b1;
       end
 

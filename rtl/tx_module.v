@@ -98,14 +98,14 @@ module tx_module #(
       end
 
       SendStart  : begin                                                    /**/
-        if ( sample_count_done_s ) begin
+        if (sample_count_done_s) begin
           n_state_s = SendData;
         end
       end
 
       SendData   : begin                                                    /**/
-        if ( sample_count_done_s && (data_counter_r == data_counter_max_r) ) begin
-          if ( parity_en_r ) begin
+        if (sample_count_done_s && (data_counter_r == data_counter_max_r) ) begin
+          if (parity_en_r) begin
             n_state_s = SendParity;
           end else begin
             n_state_s = SendStop;
@@ -114,19 +114,19 @@ module tx_module #(
       end
 
       SendParity : begin                                                    /**/
-        if ( sample_count_done_s ) begin 
+        if (sample_count_done_s) begin
           n_state_s = SendStop;
         end
       end
 
       SendStop   : begin                                                    /**/
-        if ( sample_count_done_s && (stop_counter_r == stop_counter_max_r) ) begin
+        if (sample_count_done_s && (stop_counter_r == stop_counter_max_r) ) begin
           n_state_s = Done;
         end
       end
 
       Done       : begin                                                    /**/
-        if ( tx_en_i ) begin
+        if (tx_en_i) begin
           n_state_s = Idle;
         end else begin
           n_state_s = Reset;
