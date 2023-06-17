@@ -6,7 +6,7 @@
 -- Author(s)  : Thomas Szymkowiak
 -- Company    : TUNI
 -- Created    : 2023-04-16
--- Design     : baud_generator
+-- Design     : rx_module
 -- Platform   : -
 -- Standard   : Verilog '05
 --------------------------------------------------------------------------------
@@ -17,14 +17,15 @@
 -- Date        Version  Author  Description
 -- 2023-04-16  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
+`timescale 1ns/1ps
 
 module rx_module #(
   parameter  unsigned MAX_DATA_WIDTH       = 8,
-  parameter  unsigned DATA_COUNTER_WIDTH   = 3,
+  parameter  unsigned DATA_COUNTER_WIDTH   = 3, // set to $clog2(MAX_DATA_WIDTH-1)
   parameter  unsigned STOP_CONF_WIDTH      = 2,
-  parameter  unsigned DATA_CONF_WIDTH      = 3,
+  parameter  unsigned DATA_CONF_WIDTH      = 2,
   parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
-  localparam unsigned TotalConfWidth = STOP_CONF_WIDTH + DATA_CONF_WIDTH
+  localparam unsigned TotalConfWidth = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
 ) (
 
   input  wire                      clk_i,
@@ -32,9 +33,10 @@ module rx_module #(
   input  wire                      baud_en_i,
   input  wire                      rx_en_i,
   input  wire                      uart_rx_i,
-  input  wire [TotalConfWidth-1:0] rx_conf_i,
+  input  wire [TotalConfWidth-1:0] rx_conf_i, // {data[1:0], stop[1:0], parity_en}
 
   output wire                      rx_done_o,
+  output wire                      busy_o,
   output wire                      parity_error_o,
   output wire [MAX_DATA_WIDTH-1:0] rx_data_o
 );
@@ -248,6 +250,7 @@ module rx_module #(
   end
 
   assign rx_done_o = rx_done_r;
+  assign busy_o    = busy_r;
 
 /*** Load configuration *******************************************************/
 
@@ -256,7 +259,7 @@ module rx_module #(
     if (rst_i) begin
       parity_en_r        <= 1'b0;
       stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
-      data_counter_max_r <= {DATA_CONF_WIDTH{1'b0}};
+      data_counter_max_r <= {DATA_COUNTER_WIDTH{1'b0}};
     end else begin
       if (load_rx_conf_r) begin
         parity_en_r        <= rx_conf_i[0];

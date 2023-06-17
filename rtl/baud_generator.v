@@ -21,6 +21,7 @@
 -- Date        Version  Author  Description
 -- 2023-03-04  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
+`timescale 1ns/1ps
 
 module baud_generator #(
   //! Top clock frequency
