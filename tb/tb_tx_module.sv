@@ -71,7 +71,8 @@ module tb_tx_module #(
 
   initial begin 
 
-    //$timeformat(-9, 1, " ns");
+    $dumpfile("tb_tx_module.vcd");
+    $dumpvars;
     
     // initialise dut values
     rst            = 1'b1;
@@ -113,6 +114,7 @@ module tb_tx_module #(
     @(posedge clk);
 
     $display("[%0t ps] - Simulation Complete!", $time);
+    
     $finish;
     
   end

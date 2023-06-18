@@ -1,13 +1,13 @@
 
 VERILATOR      = verilator
-VERILATOR_ARGS = --cc --exe --build --timing --trace -Wall -Wno-UNUSEDSIGNAL -j 0
+VERILATOR_ARGS = --cc --exe --build --trace --timing -Wall -Wno-UNUSEDSIGNAL -j 0
 SIM_MAIN_CPP  ?= ../sim/tb_tx_module_sim_main.cpp
 SV_TB         ?= ../tb/tb_tx_module.sv
 V_RTL         ?= ../rtl/tx_module.v
 
 OUT_DIR       ?= obj_dir
 TOP           ?= Vtb_tx_module
-WAVEFORM      ?= waveform
+WAVEFORM      ?= tb_tx_module
 
 .PHONY: verilate
 verilate:
@@ -21,6 +21,7 @@ run : verilate
 wave : run
 	gtkwave $(WAVEFORM).vcd
 
+.PHONY: clean
 clean:
 	rm -rf $(WAVEFORM).vcd
 	rm -rf $(OUT_DIR)
