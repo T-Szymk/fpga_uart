@@ -12,6 +12,7 @@
 --------------------------------------------------------------------------------
 -- Description: Module to perform receipt of UART data from the uart_rx_i
 --              port.
+-- ToDo: Add stop error signal.
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
