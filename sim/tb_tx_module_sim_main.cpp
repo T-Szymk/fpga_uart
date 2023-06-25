@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
 
   Verilated::commandArgs(argc, argv);
   Verilated::traceEverOn(true);
+  
   const std::unique_ptr<Vtb_tx_module> top{new Vtb_tx_module};
 
   while ( !Verilated::gotFinish() ) { 

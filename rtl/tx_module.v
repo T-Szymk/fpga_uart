@@ -235,7 +235,7 @@ module tx_module #(
 
     case ( c_state_r )
       SendStart : begin
-        uart_tx_s = 1'b1;
+        uart_tx_s = 1'b0;
       end
       SendData : begin
         uart_tx_s = tx_data_r[data_counter_r];
@@ -244,10 +244,10 @@ module tx_module #(
         uart_tx_s = parity_bit_s;
       end
       SendStop : begin
-        uart_tx_s = 1'h0;
+        uart_tx_s = 1'h1;
       end
       default : begin
-        uart_tx_s = 1'b0;
+        uart_tx_s = 1'b1;
       end
     endcase
 
