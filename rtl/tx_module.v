@@ -10,38 +10,40 @@
 -- Platform   : -
 -- Standard   : Verilog '05
 --------------------------------------------------------------------------------
--- Description: Module to perform transmission of UART data onto the uart_tx_o
---              port.
---------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-03-11  1.0      TZS     Created
 -- 2023-04-16  1.1      TZS     Connected tx_done_o
 ------------------------------------------------------------------------------*/
+/*** DESCRIPTION ***/
+//! Module to perform transmission of UART data onto the uart_tx_o port.
+/*----------------------------------------------------------------------------*/
+
 `timescale 1ns/1ps
 
 module tx_module #(
-  parameter  unsigned MAX_DATA_WIDTH       = 8,
-  parameter  unsigned DATA_COUNTER_WIDTH   = 3, // set to $clog2(MAX_DATA_WIDTH)
+  parameter  unsigned MAX_UART_DATA_W      = 8, // max possible data width
   parameter  unsigned STOP_CONF_WIDTH      = 2,
   parameter  unsigned DATA_CONF_WIDTH      = 2,
   parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
-  localparam unsigned TotalConfWidth = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+  // locals
+  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W),
+  localparam unsigned TotalConfWidth   = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
 ) (
-  input  wire                      clk_i,
-  input  wire                      rst_i,
-  input  wire                      baud_en_i,
-  input  wire                      tx_en_i,
-  input  wire                      tx_start_i,
-  input  wire [TotalConfWidth-1:0] tx_conf_i, // {data[1:0], stop[1:0], parity_en}
-  input  wire [MAX_DATA_WIDTH-1:0] tx_data_i,
+  input  wire                       clk_i,
+  input  wire                       rst_i,
+  input  wire                       baud_en_i,
+  input  wire                       tx_en_i,
+  input  wire                       tx_start_i,
+  input  wire [ TotalConfWidth-1:0] tx_conf_i, // {data[1:0], stop[1:0], parity_en}
+  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,
 
-  output wire                      tx_done_o,
-  output wire                      busy_o,
-  output wire                      uart_tx_o
+  output wire                       tx_done_o,
+  output wire                       busy_o,
+  output wire                       uart_tx_o
 );
 
-/*** TYPES/CONSTANTS/DECLARATIONS *********************************************/
+  /*** CONSTANTS **************************************************************/
 
   localparam reg [3-1:0] // tx fsm states
     Reset      = 3'b000,
@@ -54,6 +56,8 @@ module tx_module #(
 
   localparam unsigned SampleCounterMax = 4'd15;
 
+  /*** SIGNALS ****************************************************************/
+
   wire sample_count_done_s;
   wire parity_bit_s;
 
@@ -63,15 +67,17 @@ module tx_module #(
   reg busy_r;
   reg tx_done_r;
 
-  reg [3-1:0] c_state_r, n_state_s;
-  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_r;
+  reg [                   3-1:0] c_state_r, n_state_s;
+  reg [    DataCounterWidth-1:0] data_counter_r;
   reg [     STOP_CONF_WIDTH-1:0] stop_counter_r;
   reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r;
-  reg [      MAX_DATA_WIDTH-1:0] tx_data_r;
-  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_max_r;
+  reg [     MAX_UART_DATA_W-1:0] tx_data_r;
+  reg [    DataCounterWidth-1:0] data_counter_max_r;
   reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r;
 
-/*** FSM **********************************************************************/
+  /*** RTL ********************************************************************/
+
+  /*** FSM ***/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_fsm_next_state
     if ( rst_i ) begin
@@ -83,29 +89,29 @@ module tx_module #(
 
   always @(*) begin : comb_fsm_next_state
 
-    n_state_s      = c_state_r;
+    n_state_s = c_state_r;
 
     case(c_state_r)
 
-      Reset      : begin                                                    /**/
+      Reset : begin                                                         /**/
         if ( tx_en_i ) begin
           n_state_s = Idle;
         end
       end
 
-      Idle       : begin                                                    /**/
+      Idle : begin                                                          /**/
         if ( (tx_start_i == 1'b1) ) begin
           n_state_s      = SendStart;
         end
       end
 
-      SendStart  : begin                                                    /**/
+      SendStart : begin                                                     /**/
         if (sample_count_done_s) begin
           n_state_s = SendData;
         end
       end
 
-      SendData   : begin                                                    /**/
+      SendData : begin                                                      /**/
         if (sample_count_done_s && (data_counter_r == data_counter_max_r) ) begin
           if (parity_en_r) begin
             n_state_s = SendParity;
@@ -121,13 +127,13 @@ module tx_module #(
         end
       end
 
-      SendStop   : begin                                                    /**/
+      SendStop : begin                                                      /**/
         if (sample_count_done_s && (stop_counter_r == stop_counter_max_r) ) begin
           n_state_s = Done;
         end
       end
 
-      Done       : begin                                                    /**/
+      Done : begin                                                          /**/
         if (tx_en_i) begin
           n_state_s = Idle;
         end else begin
@@ -135,14 +141,14 @@ module tx_module #(
         end
       end
 
-      default    : begin                                                    /**/
+      default : begin                                                       /**/
         n_state_s = Reset;
       end
 
     endcase
   end
 
-/*** Bit Counters *************************************************************/
+ /*** Bit Counters ***/
 
   assign sample_count_done_s = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
 
@@ -151,7 +157,7 @@ module tx_module #(
     if ( rst_i ) begin
 
       sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
-      data_counter_r   <= {DATA_COUNTER_WIDTH{1'b0}};
+      data_counter_r   <= {DataCounterWidth{1'b0}};
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
 
     end else if ( baud_en_i ) begin
@@ -180,7 +186,7 @@ module tx_module #(
     end
   end
 
-/*** Busy  + Done *************************************************************/
+  /*** Busy  + Done ***/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_busy_done
 
@@ -209,15 +215,15 @@ module tx_module #(
 
   assign tx_done_o = tx_done_r;
 
-/*** Load configuration *******************************************************/
+  /*** Load configuration ***/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_tx_conf_load
 
     if ( rst_i ) begin
-      tx_data_r          <= {MAX_DATA_WIDTH{1'b0}};
+      tx_data_r          <= {MAX_UART_DATA_W{1'b0}};
       parity_en_r        <= 1'b0;
       stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
-      data_counter_max_r <= {DATA_COUNTER_WIDTH{1'b0}};
+      data_counter_max_r <= {DataCounterWidth{1'b0}};
     end else begin
       if ( load_tx_conf_r ) begin
         tx_data_r          <= tx_data_i;
@@ -229,7 +235,7 @@ module tx_module #(
 
   end
 
-/*** Tx Data, Parity and Output ***********************************************/
+  /*** Tx Data, Parity and Output ***/
 
   always @(*) begin : comb_uart_tx_out
 

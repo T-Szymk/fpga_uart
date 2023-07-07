@@ -10,39 +10,42 @@
 -- Platform   : -
 -- Standard   : Verilog '05
 --------------------------------------------------------------------------------
--- Description: Module to perform receipt of UART data from the uart_rx_i
---              port.
--- ToDo: Add stop error signal.
---------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-04-16  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
+/***  DESCRIPTION ***/
+//! Module to perform receipt of UART data from the uart_rx_i port.
+//!
+//! ToDo: Add stop error signal.
+/*----------------------------------------------------------------------------*/
+
 `timescale 1ns/1ps
 
 module rx_module #(
-  parameter  unsigned MAX_DATA_WIDTH       = 8,
-  parameter  unsigned DATA_COUNTER_WIDTH   = 3, // set to $clog2(MAX_DATA_WIDTH-1)
+  parameter  unsigned MAX_UART_DATA_W      = 8, // max possible data width
   parameter  unsigned STOP_CONF_WIDTH      = 2,
   parameter  unsigned DATA_CONF_WIDTH      = 2,
   parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
-  localparam unsigned TotalConfWidth = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+  // locals
+  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W),
+  localparam unsigned TotalConfWidth   = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
 ) (
 
-  input  wire                      clk_i,
-  input  wire                      rst_i,
-  input  wire                      baud_en_i,
-  input  wire                      rx_en_i,
-  input  wire                      uart_rx_i,
-  input  wire [TotalConfWidth-1:0] rx_conf_i, // {data[1:0], stop[1:0], parity_en}
+  input  wire                       clk_i,
+  input  wire                       rst_i,
+  input  wire                       baud_en_i,
+  input  wire                       rx_en_i,
+  input  wire                       uart_rx_i,
+  input  wire [ TotalConfWidth-1:0] rx_conf_i, //! {data[1:0], stop[1:0], parity_en}
 
-  output wire                      rx_done_o,
-  output wire                      busy_o,
-  output wire                      parity_error_o,
-  output wire [MAX_DATA_WIDTH-1:0] rx_data_o
+  output wire                       rx_done_o,
+  output wire                       busy_o,
+  output wire                       parity_error_o,
+  output wire [MAX_UART_DATA_W-1:0] rx_data_o
 );
 
-/*** TYPES/CONSTANTS/DECLARATIONS *********************************************/
+/*** CONSTANTS ****************************************************************/
 
   localparam reg [3-1:0] // rx fsm states
     Reset      = 3'b000,
@@ -56,6 +59,8 @@ module rx_module #(
   localparam unsigned SampleCounterMax = 4'd15;
   localparam unsigned SampleCountMid   = 4'd7;
 
+  /*** SIGNALS ****************************************************************/
+
   wire final_sample_s;
   wire last_data_sample_s;
 
@@ -68,15 +73,17 @@ module rx_module #(
   reg rx_done_r;
   reg parity_error_r;
 
-  reg [3-1:0] c_state_r, n_state_s;
-  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_r;
+  reg [                   3-1:0] c_state_r, n_state_s;
+  reg [    DataCounterWidth-1:0] data_counter_r;
   reg [     STOP_CONF_WIDTH-1:0] stop_counter_r;
   reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r;
-  reg [      MAX_DATA_WIDTH-1:0] rx_data_r;
-  reg [  DATA_COUNTER_WIDTH-1:0] data_counter_max_r;
+  reg [     MAX_UART_DATA_W-1:0] rx_data_r;
+  reg [    DataCounterWidth-1:0] data_counter_max_r;
   reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r;
 
-/*** FSM **********************************************************************/
+  /*** RTL ********************************************************************/
+
+  /*** FSM ***/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_fsm_next_state
     if ( rst_i ) begin
@@ -92,29 +99,37 @@ module rx_module #(
 
     case(c_state_r)
 
-      Reset      : begin                                                    /**/
+      Reset : begin                                                         /**/
         if ( rx_en_i ) begin
           n_state_s = Idle;
         end
       end
 
-      Idle       : begin                                                    /**/
+      Idle : begin                                                          /**/
         if ( uart_rx_i ) begin
-          n_state_s      = RecvStart;
+          n_state_s = RecvStart;
         end
       end
 
-      RecvStart  : begin                                                    /**/
+      RecvStart : begin                                                     /**/
         if ( final_sample_s) begin
           /* check if start bit value was maintained throughout sample period
              if not, assume glitch and return to idle */
-          n_state_s = start_r ? RecvData : Idle;
+          if (start_r) begin
+            n_state_s = RecvData;
+          end else begin 
+            n_state_s = Idle;
+          end
         end
       end
 
-      RecvData   : begin                                                    /**/
+      RecvData : begin                                                      /**/
         if ( last_data_sample_s ) begin
-          n_state_s = (parity_en_r) ? RecvParity : RecvStop;
+          if (parity_en_r) begin
+            n_state_s = RecvParity;
+          end else begin
+            n_state_s = RecvStop;
+          end
         end
       end
 
@@ -124,13 +139,13 @@ module rx_module #(
         end
       end
 
-      RecvStop   : begin                                                    /**/
+      RecvStop : begin                                                      /**/
         if ( final_sample_s ) begin
-          n_state_s = RecvStop;
+          n_state_s = Done;
         end
       end
 
-      Done       : begin                                                    /**/
+      Done : begin                                                          /**/
         if ( rx_en_i ) begin
           n_state_s = Idle;
         end else begin
@@ -138,14 +153,14 @@ module rx_module #(
         end
       end
 
-      default    : begin                                                    /**/
+      default : begin                                                       /**/
         n_state_s = Reset;
       end
 
     endcase
   end
 
-/*** Bit Counters + Data capture + Parity *************************************/
+  /*** Bit Counters + Data capture + Parity ***/
 
   assign final_sample_s     = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
   assign last_data_sample_s = ((sample_counter_r == SampleCounterMax) &&
@@ -156,9 +171,9 @@ module rx_module #(
     if ( rst_i ) begin
 
       sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
-      data_counter_r   <= {DATA_COUNTER_WIDTH{1'b0}};
+      data_counter_r   <= {DataCounterWidth{1'b0}};
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
-      rx_data_r        <= {MAX_DATA_WIDTH{1'b0}};
+      rx_data_r        <= {MAX_UART_DATA_W{1'b0}};
       start_r          <= 1'b0;
       parity_r         <= 1'b0;
       parity_error_r   <= 1'b0;
@@ -202,7 +217,7 @@ module rx_module #(
 
         case ( c_state_r )
           Reset : begin
-            rx_data_r <= {MAX_DATA_WIDTH{1'b0}};
+            rx_data_r <= {MAX_UART_DATA_W{1'b0}};
             parity_r  <= 1'b0;
           end
           RecvStart : begin
@@ -223,7 +238,7 @@ module rx_module #(
     end
   end
 
-/*** Busy  + Done *************************************************************/
+  /*** Busy  + Done ***/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_busy_done
 
@@ -253,14 +268,14 @@ module rx_module #(
   assign rx_done_o = rx_done_r;
   assign busy_o    = busy_r;
 
-/*** Load configuration *******************************************************/
+  /*** Load configuration ***/
 
   always @(posedge clk_i or posedge rst_i) begin : sync_rx_conf_load
 
     if (rst_i) begin
       parity_en_r        <= 1'b0;
       stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
-      data_counter_max_r <= {DATA_COUNTER_WIDTH{1'b0}};
+      data_counter_max_r <= {DataCounterWidth{1'b0}};
     end else begin
       if (load_rx_conf_r) begin
         parity_en_r        <= rx_conf_i[0];

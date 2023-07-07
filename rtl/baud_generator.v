@@ -10,22 +10,33 @@
 -- Platform   : -
 -- Standard   : Verilog '05
 --------------------------------------------------------------------------------
--- Description: Baud rate generator to be used within the FPGA UART. The Baud 
---              rate can be set using the sel signal. The following Baud rates
---              are supported: 9600, 19200, 115200 and 256000.
---              The generator toggles an enable signal for one clock cycle at a 
---              frequency equivalent to the Baud Rate / 16. This can be used by
---              other components within the UART for timing Rx and Tx processes.
---------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-03-04  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
+/*** DESCRIPTION ***/
+//! Baud rate generator to be used within the FPGA UART. The Baud rate can be 
+//! set using the sel signal. The following Baud rates are supported: 9600, 
+//! 19200, 115200 and 256000.
+//! 
+//! The generator toggles an enable signal for one clock cycle at a frequency 
+//! equivalent to the Baud Rate / 16. This can be used by other components 
+//! within the UART for timing Rx and Tx processes.
+/*----------------------------------------------------------------------------*/
+
 `timescale 1ns/1ps
 
 module baud_generator #(
   //! Top clock frequency
-  parameter unsigned TOP_CLK_FREQ_HZ = 50000000
+  parameter unsigned TOP_CLK_FREQ_HZ                = 50000000,
+  parameter unsigned MIN_SAMPLE_FREQ_9600_BAUD_HZ   =   153600,
+  parameter unsigned MIN_SAMPLE_FREQ_19200_BAUD_HZ  =   307200,
+  parameter unsigned MIN_SAMPLE_FREQ_115200_BAUD_HZ =  1843200,
+  parameter unsigned MIN_SAMPLE_FREQ_256000_BAUD_HZ =  4086000,
+  parameter unsigned SAMPLE_COUNT_9600_BAUD         =      325,
+  parameter unsigned SAMPLE_COUNT_19200_BAUD        =      162,
+  parameter unsigned SAMPLE_COUNT_115200_BAUD       =       27,
+  parameter unsigned SAMPLE_COUNT_256000_BAUD       =       12
 ) (
   input  wire         clk_i,      //! Clock
   input  wire         rst_i,      //! Active-high synchronous reset
@@ -33,19 +44,11 @@ module baud_generator #(
   output wire         baud_en_o   //! Baud clock enable signal
 );
 
-/*** TYPES/CONSTANTS/DECLARATIONS *********************************************/
-
-  localparam integer MIN_SAMPLE_FREQ_9600_BAUD_HZ   =  153600;
-  localparam integer MIN_SAMPLE_FREQ_19200_BAUD_HZ  =  307200;
-  localparam integer MIN_SAMPLE_FREQ_115200_BAUD_HZ = 1843200;
-  localparam integer MIN_SAMPLE_FREQ_256000_BAUD_HZ = 4086000;
-
-  localparam integer SAMPLE_COUNT_9600_BAUD   = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_9600_BAUD_HZ );
-  localparam integer SAMPLE_COUNT_19200_BAUD  = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_19200_BAUD_HZ );
-  localparam integer SAMPLE_COUNT_115200_BAUD = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_115200_BAUD_HZ );
-  localparam integer SAMPLE_COUNT_256000_BAUD = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_256000_BAUD_HZ );
+  /*** CONSTANTS **************************************************************/
 
   localparam integer SAMPLE_COUNT_WIDTH = $clog2(SAMPLE_COUNT_256000_BAUD + 1);
+
+  /*** SIGNALS ****************************************************************/
 
   //! Baud clock enable signal
   reg baud_en_r     = 1'b0;
@@ -58,11 +61,9 @@ module baud_generator #(
   //! Sample counter register
   reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_r;
 
-/*** Assignments **************************************************************/
+  /*** RTL ********************************************************************/
 
   assign baud_en_o = baud_en_r;
-
-/*** Logic ********************************************************************/
   
   //! Sample counter logic 
   always @(posedge clk_i) begin : sync_sample_count
