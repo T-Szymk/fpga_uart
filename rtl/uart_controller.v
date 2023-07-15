@@ -12,7 +12,7 @@
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
--- 2023-07-02  1.0      TZS     Created
+-- 2023-07-15  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ****/
 //! Top module for UART controller. Includes synchroniser for uart_rx_i signal.
@@ -84,7 +84,9 @@ module uart_controller #(
 
   wire baud_en_s;
   
-  reg uart_rx_sync0_r, uart_rx_sync1_r, uart_rx_sync2_r; //! Synchroniser registers for incoming Rx signal
+  reg uart_rx_sync0_r = 1'b0; //! Synchroniser register 0 for incoming Rx signal
+  reg uart_rx_sync1_r = 1'b0; //! Synchroniser register 1 for incoming Rx signal
+  reg uart_rx_sync2_r = 1'b0; //! Synchroniser register 2 for incoming Rx signal
 
   /*** INSTANTIATIONS *********************************************************/
   
@@ -147,7 +149,7 @@ module uart_controller #(
 
   //! 3FF synchroniser for uart_rx_i
   always @(posedge clk_i) begin : uart_rx_sync
-    if (~rst_i) begin 
+    if (rst_i) begin 
       uart_rx_sync0_r <= 1'b0;
       uart_rx_sync1_r <= 1'b0;
       uart_rx_sync2_r <= 1'b0;

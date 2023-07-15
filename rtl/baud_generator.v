@@ -12,7 +12,7 @@
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
--- 2023-03-04  1.0      TZS     Created
+-- 2023-07-15  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 //! Baud rate generator to be used within the FPGA UART. The Baud rate can be 

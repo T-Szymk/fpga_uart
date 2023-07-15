@@ -12,7 +12,7 @@
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
--- 2023-04-16  1.0      TZS     Created
+-- 2023-07-15  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /***  DESCRIPTION ***/
 //! Module to perform receipt of UART data from the uart_rx_i port.
@@ -23,31 +23,37 @@
 `timescale 1ns/1ps
 
 module rx_module #(
-  parameter  unsigned MAX_UART_DATA_W      = 8, // max possible data width
+  //! Maximum width of UART data 
+  parameter  unsigned MAX_UART_DATA_W      = 8,
+  //! Width of stop bit configuration field
   parameter  unsigned STOP_CONF_WIDTH      = 2,
+  //! Width of data bit configuration field
   parameter  unsigned DATA_CONF_WIDTH      = 2,
+  //! Width of sample counter within Tx and Rx module (sampled 16 times)
   parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
+  //! Total width of configuration data bits sent to Tx and Rx modules
   parameter  unsigned TOTAL_CONF_WIDTH     = 5,
-  // locals
+  //! Width of UART data counter
   localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W)
 ) (
 
-  input  wire                        clk_i,
-  input  wire                        rst_i,
-  input  wire                        baud_en_i,
-  input  wire                        rx_en_i,
-  input  wire                        uart_rx_i,
-  input  wire [TOTAL_CONF_WIDTH-1:0] rx_conf_i, //! {data[1:0], stop[1:0], parity_en}
+  input  wire                        clk_i,     //! Top clock  
+  input  wire                        rst_i,     //! Synchronous active-high reset   
+  input  wire                        baud_en_i, //! Baud rate select signal     
+  input  wire                        rx_en_i,   //! Enable for Rx module      
+  input  wire                        uart_rx_i, //! Synchronised external Rx input of UART           
+  input  wire [TOTAL_CONF_WIDTH-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en}         
 
-  output wire                        rx_done_o,
-  output wire                        rx_busy_o,
-  output wire                        rx_parity_err_o,
-  output wire [ MAX_UART_DATA_W-1:0] rx_data_o
+  output wire                        rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)  
+  output wire                        rx_busy_o,       //! Rx status signal indicating that a parity error was recognised in latest received data  
+  output wire                        rx_parity_err_o, //! Rx status signal to indicate Rx module is busy receiving something          
+  output wire [ MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
 );
 
 /*** CONSTANTS ****************************************************************/
 
-  localparam reg [3-1:0] // rx fsm states
+  //! Rx fsm states
+  localparam reg [3-1:0] 
     Reset      = 3'b000,
     Idle       = 3'b001,
     RecvStart  = 3'b010,
@@ -55,8 +61,9 @@ module rx_module #(
     RecvParity = 3'b100,
     RecvStop   = 3'b101,
     Done       = 3'b110;
-
+  //! Max value of symbol sample counter (16-1)
   localparam unsigned SampleCounterMax = 4'd15;
+  //! Mid value of symbol sample counter used to determine when to latch sample
   localparam unsigned SampleCountMid   = 4'd7;
 
   /*** SIGNALS ****************************************************************/
@@ -64,35 +71,49 @@ module rx_module #(
   wire final_sample_s;
   wire last_data_sample_s;
 
-  reg uart_rx_s;
-  reg load_rx_conf_r;
-  reg start_r;
-  reg parity_r;
-  reg parity_en_r;
-  reg busy_r;
-  reg rx_done_r;
-  reg parity_error_r;
+  reg uart_rx_s      = 1'b0;
+  reg load_rx_conf_r = 1'b0;
+  reg start_r        = 1'b0;
+  reg parity_r       = 1'b0;
+  reg parity_en_r    = 1'b0;
+  reg busy_r         = 1'b0;
+  reg rx_done_r      = 1'b0;
+  reg parity_error_r = 1'b0;
 
-  reg [                   3-1:0] c_state_r, n_state_s;
-  reg [    DataCounterWidth-1:0] data_counter_r;
-  reg [     STOP_CONF_WIDTH-1:0] stop_counter_r;
-  reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r;
-  reg [     MAX_UART_DATA_W-1:0] rx_data_r;
-  reg [    DataCounterWidth-1:0] data_counter_max_r;
-  reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r;
+  reg [                   3-1:0] c_state_r          = {3{1'b0}}; 
+  reg [                   3-1:0] n_state_s          = {3{1'b0}};
+  reg [    DataCounterWidth-1:0] data_counter_r     = {DataCounterWidth{1'b0}};
+  reg [     STOP_CONF_WIDTH-1:0] stop_counter_r     = {STOP_CONF_WIDTH{1'b0}};
+  reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r   = {SAMPLE_COUNTER_WIDTH{1'b0}};
+  reg [     MAX_UART_DATA_W-1:0] rx_data_r          = {MAX_UART_DATA_W{1'b0}};
+  reg [    DataCounterWidth-1:0] data_counter_max_r = {DataCounterWidth{1'b0}};
+  reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r = {STOP_CONF_WIDTH{1'b0}};
 
   /*** RTL ********************************************************************/
 
+  /*** ASSIGNMENTS ***/
+
+  assign final_sample_s     = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
+  assign last_data_sample_s = ((sample_counter_r == SampleCounterMax) &&
+                               (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
+  assign rx_done_o          = rx_done_r;
+  assign rx_busy_o          = busy_r;
+  assign rx_parity_err_o    = parity_error_r;
+
   /*** FSM ***/
 
-  always @(posedge clk_i or posedge rst_i) begin : sync_fsm_next_state
-    if ( rst_i ) begin
+  //! Synch current state assignment for Rx FSM
+  always @(posedge clk_i) begin : sync_fsm_next_state
+
+    if (rst_i) begin
       c_state_r <= Reset;
-    end else if ( baud_en_i ) begin
+    end else if (baud_en_i) begin
       c_state_r <= n_state_s;
     end
+
   end
 
+  //! Comb next state assignment for Rx FSM
   always @(*) begin : comb_fsm_next_state
 
     n_state_s = c_state_r;
@@ -156,19 +177,16 @@ module rx_module #(
       default : begin                                                       /**/
         n_state_s = Reset;
       end
-
     endcase
-  end
+
+  end : comb_fsm_next_state
 
   /*** Bit Counters + Data capture + Parity ***/
 
-  assign final_sample_s     = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
-  assign last_data_sample_s = ((sample_counter_r == SampleCounterMax) &&
-                               (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
+  //! Synch capturing of Rx data                               
+  always @(posedge clk_i) begin : sync_data_capture
 
-  always @(posedge clk_i or posedge rst_i) begin : sync_bit_counter
-
-    if ( rst_i ) begin
+    if (rst_i) begin
 
       sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
       data_counter_r   <= {DataCounterWidth{1'b0}};
@@ -236,11 +254,13 @@ module rx_module #(
 
       end
     end
-  end
+
+  end : sync_data_capture
 
   /*** Busy  + Done ***/
 
-  always @(posedge clk_i or posedge rst_i) begin : sync_busy_done
+  //! Synch busy and done signal generation
+  always @(posedge clk_i) begin : sync_busy_done
 
     if (rst_i) begin
       busy_r         <= 1'b0;
@@ -261,17 +281,14 @@ module rx_module #(
       if (n_state_s == Idle) begin
         load_rx_conf_r <= 1'b1;
       end
-
     end
-  end
 
-  assign rx_done_o       = rx_done_r;
-  assign rx_busy_o       = busy_r;
-  assign rx_parity_err_o = parity_error_r;
+  end : sync_busy_done
 
   /*** Load configuration ***/
 
-  always @(posedge clk_i or posedge rst_i) begin : sync_rx_conf_load
+  //! Synch latching of configuration inputs 
+  always @(posedge clk_i) begin : sync_rx_conf_load
 
     if (rst_i) begin
       parity_en_r        <= 1'b0;
@@ -285,6 +302,6 @@ module rx_module #(
       end
     end
 
-  end
+  end : sync_rx_conf_load
 
 endmodule // rx_module
