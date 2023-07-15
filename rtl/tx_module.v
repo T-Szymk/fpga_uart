@@ -22,25 +22,25 @@
 `timescale 1ns/1ps
 
 module tx_module #(
-  parameter  unsigned MAX_UART_DATA_W      = 8, // max possible data width
-  parameter  unsigned STOP_CONF_WIDTH      = 2,
-  parameter  unsigned DATA_CONF_WIDTH      = 2,
-  parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
+  parameter  unsigned MAX_UART_DATA_W    = 8, // max possible data width
+  parameter  unsigned STOP_CONF_WIDTH    = 2,
+  parameter  unsigned DATA_CONF_WIDTH    = 2,
+  parameter  unsigned SAMPLE_COUNT_WIDTH = 4,
+  parameter  unsigned TOTAL_CONF_WIDTH   = 5,
   // locals
-  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W),
-  localparam unsigned TotalConfWidth   = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W)
 ) (
-  input  wire                       clk_i,
-  input  wire                       rst_i,
-  input  wire                       baud_en_i,
-  input  wire                       tx_en_i,
-  input  wire                       tx_start_i,
-  input  wire [ TotalConfWidth-1:0] tx_conf_i, // {data[1:0], stop[1:0], parity_en}
-  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,
+  input  wire                        clk_i,
+  input  wire                        rst_i,
+  input  wire                        baud_en_i,
+  input  wire                        tx_en_i,
+  input  wire                        tx_start_i,
+  input  wire [TOTAL_CONF_WIDTH-1:0] tx_conf_i, // {data[1:0], stop[1:0], parity_en}
+  input  wire [ MAX_UART_DATA_W-1:0] tx_data_i,
 
-  output wire                       tx_done_o,
-  output wire                       busy_o,
-  output wire                       uart_tx_o
+  output wire                        tx_done_o,
+  output wire                        tx_busy_o,
+  output wire                        uart_tx_o
 );
 
   /*** CONSTANTS **************************************************************/
@@ -67,13 +67,13 @@ module tx_module #(
   reg busy_r;
   reg tx_done_r;
 
-  reg [                   3-1:0] c_state_r, n_state_s;
-  reg [    DataCounterWidth-1:0] data_counter_r;
-  reg [     STOP_CONF_WIDTH-1:0] stop_counter_r;
-  reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r;
-  reg [     MAX_UART_DATA_W-1:0] tx_data_r;
-  reg [    DataCounterWidth-1:0] data_counter_max_r;
-  reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r;
+  reg [                 3-1:0] c_state_r, n_state_s;
+  reg [  DataCounterWidth-1:0] data_counter_r;
+  reg [   STOP_CONF_WIDTH-1:0] stop_counter_r;
+  reg [SAMPLE_COUNT_WIDTH-1:0] sample_counter_r;
+  reg [   MAX_UART_DATA_W-1:0] tx_data_r;
+  reg [  DataCounterWidth-1:0] data_counter_max_r;
+  reg [   STOP_CONF_WIDTH-1:0] stop_counter_max_r;
 
   /*** RTL ********************************************************************/
 
@@ -156,7 +156,7 @@ module tx_module #(
 
     if ( rst_i ) begin
 
-      sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
+      sample_counter_r <= {SAMPLE_COUNT_WIDTH{1'b0}};
       data_counter_r   <= {DataCounterWidth{1'b0}};
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
 
@@ -259,7 +259,7 @@ module tx_module #(
 
   end
 
-  assign busy_o       = busy_r;
+  assign tx_busy_o    = busy_r;
   assign uart_tx_o    = uart_tx_s;
   assign parity_bit_s = ^tx_data_r;  
 

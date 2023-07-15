@@ -15,44 +15,76 @@
 -- 2023-07-02  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ****/
-//! Top module for UART controller.
+//! Top module for UART controller. Includes synchroniser for uart_rx_i signal.
 /*----------------------------------------------------------------------------*/
 
 `timescale 1ns/1ps
 
 module uart_controller #(
   //! Frequency of input clock in Hz
-  parameter unsigned TOP_CLK_FREQ_HZ  = 50000000,
+  parameter unsigned TOP_CLK_FREQ_HZ    = 50000000,
   //! Maximum width of UART data 
-  parameter unsigned MAX_UART_DATA_W  = 8,
+  parameter unsigned MAX_UART_DATA_W    = 8,
+  //! Width of stop bit configuration field
+  parameter unsigned STOP_CONF_WIDTH    = 2,
+  //! Width of data bit configuration field
+  parameter unsigned DATA_CONF_WIDTH    = 2,
+  //! Width of sample counter within Tx and Rx module (sampled 16 times)
+  parameter unsigned SAMPLE_COUNT_WIDTH = $clog2(16),
   //! Number of Baud rate values
-  parameter unsigned N_BAUD_RATE_VALS = 4,
+  parameter unsigned N_BAUD_RATE_VALS   = 4,
   //! Width of Baud rate select signal
-  localparam integer BAUD_RATE_SEL_W  = $clog2(N_BAUD_RATE_VALS)
-)(
-  //! Top clock
-  input wire                       clk_i,
-  //! Synchronous active-high reset
-  input wire                       rst_i,
-  //! Baud rate select signal
-  input wire [BAUD_RATE_SEL_W-1:0] baud_sel_i
+  localparam unsigned BaudRateSelWidth  = $clog2(N_BAUD_RATE_VALS),
+  //! Total width of configuration data bits sent to Tx and Rx modules
+  localparam unsigned TotalConfWidth    = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+)(  
+  input wire                         clk_i,      //! Top clock
+  input wire                         rst_i,      //! Synchronous active-high reset  
+  input  wire [BaudRateSelWidth-1:0] baud_sel_i, //! Baud rate select signal
+  
+  input  wire                        tx_en_i,    //! Enable for Tx module
+  input  wire                        tx_start_i, //! Start signal to initiate transmission of data
+  input  wire [  TotalConfWidth-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}  
+  input  wire [ MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted
+  
+  input  wire                        rx_en_i,   //! Enable for Rx module
+  input  wire                        uart_rx_i, //! External Rx input of UART   
+  input  wire [  TotalConfWidth-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
+  
+  output wire                        tx_done_o, //! Tx done status signal (pulsed when Tx of one character completed) 
+  output wire                        tx_busy_o, //! Tx status signal to indicate Tx module is busy sending something  
+  output wire                        uart_tx_o, //! External Tx output of UART
+  
+  output wire                        rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)
+  output wire                        rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
+  output wire                        rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something  
+  output wire [ MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
 );
 
   /*** CONSTANTS **************************************************************/
-
+  //! Minimum possible frequency to be able to sample a 9600 Baud signal 16x per symbol 
   localparam integer MIN_SAMPLE_FREQ_9600_BAUD_HZ   =  153600;
+  //! Minimum possible frequency to be able to sample a 19200 Baud signal 16x per symbol
   localparam integer MIN_SAMPLE_FREQ_19200_BAUD_HZ  =  307200;
+  //! Minimum possible frequency to be able to sample a 115200 Baud signal 16x per symbol
   localparam integer MIN_SAMPLE_FREQ_115200_BAUD_HZ = 1843200;
+  //! Minimum possible frequency to be able to sample a 256000 Baud signal 16x per symbol
   localparam integer MIN_SAMPLE_FREQ_256000_BAUD_HZ = 4086000;
 
+  //! Max value of sample counter to allow sampling of each symbol 16x @ 9600 Baud
   localparam integer SAMPLE_COUNT_9600_BAUD   = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_9600_BAUD_HZ );
+  //! Max value of sample counter to allow sampling of each symbol 16x @ 19200 Baud
   localparam integer SAMPLE_COUNT_19200_BAUD  = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_19200_BAUD_HZ );
+  //! Max value of sample counter to allow sampling of each symbol 16x @ 115200 Baud
   localparam integer SAMPLE_COUNT_115200_BAUD = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_115200_BAUD_HZ );
+  //! Max value of sample counter to allow sampling of each symbol 16x @ 256000 Baud
   localparam integer SAMPLE_COUNT_256000_BAUD = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_256000_BAUD_HZ );
 
   /*** SIGNALS ****************************************************************/
 
   wire baud_en_s;
+  
+  reg uart_rx_sync0_r, uart_rx_sync1_r, uart_rx_sync2_r; //! Synchroniser registers for incoming Rx signal
 
   /*** INSTANTIATIONS *********************************************************/
   
@@ -74,39 +106,56 @@ module uart_controller #(
   );
 
   tx_module #(
-    .MAX_UART_DATA_W      (MAX_UART_DATA_W),        
-    .STOP_CONF_WIDTH      (),         
-    .DATA_CONF_WIDTH      (),         
-    .SAMPLE_COUNTER_WIDTH ()             
+    .MAX_UART_DATA_W    ( MAX_UART_DATA_W    ),        
+    .STOP_CONF_WIDTH    ( STOP_CONF_WIDTH    ),         
+    .DATA_CONF_WIDTH    ( DATA_CONF_WIDTH    ),         
+    .SAMPLE_COUNT_WIDTH ( SAMPLE_COUNT_WIDTH ),
+    .TOTAL_CONF_WIDTH   ( TotalConfWidth     )             
   ) i_tx_module (
-    .clk_i      (clk_i),    
-    .rst_i      (rst_i),    
-    .baud_en_i  (baud_en_s),        
-    .tx_en_i    (),      
-    .tx_start_i (),         
-    .tx_conf_i  (),        
-    .tx_data_i  (),        
-    .tx_done_o  (),        
-    .busy_o     (),     
-    .uart_tx_o  ()      
+    .clk_i      ( clk_i      ),    
+    .rst_i      ( rst_i      ),    
+    .baud_en_i  ( baud_en_s  ),        
+    .tx_en_i    ( tx_en_i    ),      
+    .tx_start_i ( tx_start_i ),         
+    .tx_conf_i  ( tx_conf_i  ),        
+    .tx_data_i  ( tx_data_i  ),        
+    .tx_done_o  ( tx_done_o  ),        
+    .tx_busy_o  ( tx_busy_o  ),     
+    .uart_tx_o  ( uart_tx_o  )      
   );
 
   rx_module #(
-    .MAX_UART_DATA_W      (MAX_UART_DATA_W),   
-    .STOP_CONF_WIDTH      (),    
-    .DATA_CONF_WIDTH      (),    
-    .SAMPLE_COUNTER_WIDTH ()        
+    .MAX_UART_DATA_W    ( MAX_UART_DATA_W    ),   
+    .STOP_CONF_WIDTH    ( STOP_CONF_WIDTH    ),    
+    .DATA_CONF_WIDTH    ( DATA_CONF_WIDTH    ),    
+    .SAMPLE_COUNT_WIDTH ( SAMPLE_COUNT_WIDTH ),
+    .TOTAL_CONF_WIDTH   ( TotalConfWidth     )        
   ) i_rx_module (
-    .clk_i          (clk_i),     
-    .rst_i          (rst_i),     
-    .baud_en_i      (baud_en_s),         
-    .rx_en_i        (),       
-    .uart_rx_i      (),         
-    .rx_conf_i      (),         
-    .rx_done_o      (),         
-    .busy_o         (),      
-    .parity_error_o (),              
-    .rx_data_o      ()        
+    .clk_i           ( clk_i           ),     
+    .rst_i           ( rst_i           ),     
+    .baud_en_i       ( baud_en_s       ),         
+    .rx_en_i         ( rx_en_i         ),       
+    .uart_rx_i       ( uart_rx_sync2_r ),         
+    .rx_conf_i       ( rx_conf_i       ),         
+    .rx_done_o       ( rx_done_o       ),         
+    .rx_busy_o       ( rx_busy_o       ),      
+    .rx_parity_err_o ( rx_parity_err_o ),              
+    .rx_data_o       ( rx_data_o       )        
   );
+
+  /* RTL **********************************************************************/
+
+  //! 3FF synchroniser for uart_rx_i
+  always @(posedge clk_i) begin : uart_rx_sync
+    if (~rst_i) begin 
+      uart_rx_sync0_r <= 1'b0;
+      uart_rx_sync1_r <= 1'b0;
+      uart_rx_sync2_r <= 1'b0;
+    end else begin 
+      uart_rx_sync0_r <= uart_rx_i;
+      uart_rx_sync1_r <= uart_rx_sync0_r;
+      uart_rx_sync2_r <= uart_rx_sync1_r;
+    end
+  end : uart_rx_sync
 
 endmodule // uart_controller

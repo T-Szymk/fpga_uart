@@ -27,22 +27,22 @@ module rx_module #(
   parameter  unsigned STOP_CONF_WIDTH      = 2,
   parameter  unsigned DATA_CONF_WIDTH      = 2,
   parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
+  parameter  unsigned TOTAL_CONF_WIDTH     = 5,
   // locals
-  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W),
-  localparam unsigned TotalConfWidth   = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W)
 ) (
 
-  input  wire                       clk_i,
-  input  wire                       rst_i,
-  input  wire                       baud_en_i,
-  input  wire                       rx_en_i,
-  input  wire                       uart_rx_i,
-  input  wire [ TotalConfWidth-1:0] rx_conf_i, //! {data[1:0], stop[1:0], parity_en}
+  input  wire                        clk_i,
+  input  wire                        rst_i,
+  input  wire                        baud_en_i,
+  input  wire                        rx_en_i,
+  input  wire                        uart_rx_i,
+  input  wire [TOTAL_CONF_WIDTH-1:0] rx_conf_i, //! {data[1:0], stop[1:0], parity_en}
 
-  output wire                       rx_done_o,
-  output wire                       busy_o,
-  output wire                       parity_error_o,
-  output wire [MAX_UART_DATA_W-1:0] rx_data_o
+  output wire                        rx_done_o,
+  output wire                        rx_busy_o,
+  output wire                        rx_parity_err_o,
+  output wire [ MAX_UART_DATA_W-1:0] rx_data_o
 );
 
 /*** CONSTANTS ****************************************************************/
@@ -265,8 +265,9 @@ module rx_module #(
     end
   end
 
-  assign rx_done_o = rx_done_r;
-  assign busy_o    = busy_r;
+  assign rx_done_o       = rx_done_r;
+  assign rx_busy_o       = busy_r;
+  assign rx_parity_err_o = parity_error_r;
 
   /*** Load configuration ***/
 
