@@ -22,21 +22,21 @@
 
 module uart_controller #(
   //! Frequency of input clock in Hz
-  parameter TOP_CLK_FREQ_HZ    = 50000000,
+  parameter TOP_CLK_FREQ_HZ  = 50000000,
   //! Maximum width of UART data 
-  parameter MAX_UART_DATA_W    = 8,
+  parameter MAX_UART_DATA_W  = 8,
   //! Width of stop bit configuration field
-  parameter STOP_CONF_WIDTH    = 2,
+  parameter STOP_CONF_W      = 2,
   //! Width of data bit configuration field
-  parameter DATA_CONF_WIDTH    = 2,
+  parameter DATA_CONF_W      = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times) = $clog2(16)
-  parameter SAMPLE_COUNT_WIDTH = 4,
+  parameter SAMPLE_COUNT_W   = 4,
   //! Number of Baud rate values
-  parameter N_BAUD_RATE_VALS   = 4,
+  parameter N_BAUD_RATE_VALS = 4,
   //! Width of Baud rate select signal = $clog2(N_BAUD_RATE_VALS)
-  parameter BAUD_RATE_SEL_W    = 2,
+  parameter BAUD_RATE_SEL_W  = 2,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter TOTAL_CONF_W       = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+  parameter TOTAL_CONF_W     = STOP_CONF_W + DATA_CONF_W + 1
 )(  
   input  wire                       clk_i,      //! Top clock
   input  wire                       rst_i,      //! Synchronous active-high reset  
@@ -112,12 +112,12 @@ module uart_controller #(
   );
 
   tx_module #(
-    .MAX_UART_DATA_W    ( MAX_UART_DATA_W    ),        
-    .STOP_CONF_WIDTH    ( STOP_CONF_WIDTH    ),         
-    .DATA_CONF_WIDTH    ( DATA_CONF_WIDTH    ),         
-    .SAMPLE_COUNT_WIDTH ( SAMPLE_COUNT_WIDTH ),
-    .TOTAL_CONF_WIDTH   ( TOTAL_CONF_W       ),
-    .DATA_COUNTER_W     ( DataCounterWidth   )          
+    .MAX_UART_DATA_W ( MAX_UART_DATA_W  ),        
+    .STOP_CONF_W     ( STOP_CONF_W      ),         
+    .DATA_CONF_W     ( DATA_CONF_W      ),         
+    .SAMPLE_COUNT_W  ( SAMPLE_COUNT_W   ),
+    .TOTAL_CONF_W    ( TOTAL_CONF_W     ),
+    .DATA_COUNTER_W  ( DataCounterWidth )          
   ) i_tx_module (
     .clk_i      ( clk_i      ),    
     .rst_i      ( rst_i      ),    
@@ -132,12 +132,12 @@ module uart_controller #(
   );
 
   rx_module #(
-    .MAX_UART_DATA_W    ( MAX_UART_DATA_W    ),   
-    .STOP_CONF_WIDTH    ( STOP_CONF_WIDTH    ),    
-    .DATA_CONF_WIDTH    ( DATA_CONF_WIDTH    ),    
-    .SAMPLE_COUNT_WIDTH ( SAMPLE_COUNT_WIDTH ),
-    .TOTAL_CONF_WIDTH   ( TOTAL_CONF_W       ),
-    .DATA_COUNTER_W     ( DataCounterWidth   )        
+    .MAX_UART_DATA_W ( MAX_UART_DATA_W  ),   
+    .STOP_CONF_W     ( STOP_CONF_W      ),    
+    .DATA_CONF_W     ( DATA_CONF_W      ),    
+    .SAMPLE_COUNT_W  ( SAMPLE_COUNT_W   ),
+    .TOTAL_CONF_W    ( TOTAL_CONF_W     ),
+    .DATA_COUNTER_W  ( DataCounterWidth )        
   ) i_rx_module (
     .clk_i           ( clk_i           ),     
     .rst_i           ( rst_i           ),     
@@ -165,6 +165,6 @@ module uart_controller #(
       uart_rx_sync1_r <= uart_rx_sync0_r;
       uart_rx_sync2_r <= uart_rx_sync1_r;
     end
-  end : uart_rx_sync
+  end // uart_rx_sync
 
 endmodule // uart_controller

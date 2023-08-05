@@ -22,31 +22,31 @@
 
 module rx_module #(
   //! Maximum width of UART data 
-  parameter MAX_UART_DATA_W      = 8,
+  parameter MAX_UART_DATA_W = 8,
   //! Width of stop bit configuration field
-  parameter STOP_CONF_WIDTH      = 2,
+  parameter STOP_CONF_W     = 2,
   //! Width of data bit configuration field
-  parameter DATA_CONF_WIDTH      = 2,
+  parameter DATA_CONF_W     = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter SAMPLE_COUNTER_WIDTH = 4,
+  parameter SAMPLE_COUNT_W  = 4,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter TOTAL_CONF_WIDTH     = 5,
+  parameter TOTAL_CONF_W    = 5,
   //! Width of UART data counter
-  parameter DATA_COUNTER_W       = 3 
+  parameter DATA_COUNTER_W  = 3 
 ) (
 
-  input  wire                        clk_i,     //! Top clock  
-  input  wire                        rst_i,     //! Synchronous active-high reset   
-  input  wire                        baud_en_i, //! Baud rate select signal     
-  input  wire                        rx_en_i,   //! Enable for Rx module      
-  input  wire                        uart_rx_i, //! Synchronised external Rx input of UART           
-  input  wire [TOTAL_CONF_WIDTH-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en}         
+  input  wire                       clk_i,     //! Top clock  
+  input  wire                       rst_i,     //! Synchronous active-high reset   
+  input  wire                       baud_en_i, //! Baud rate select signal     
+  input  wire                       rx_en_i,   //! Enable for Rx module      
+  input  wire                       uart_rx_i, //! Synchronised external Rx input of UART           
+  input  wire [   TOTAL_CONF_W-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en}         
 
-  output wire                        rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)  
-  output wire                        rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something   
-  output wire                        rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
-  output wire                        rx_stop_err_o,   //! Rx status signal to indicate that a stop error was recognised in latest received data
-  output wire [ MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
+  output wire                       rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)  
+  output wire                       rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something   
+  output wire                       rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
+  output wire                       rx_stop_err_o,   //! Rx status signal to indicate that a stop error was recognised in latest received data
+  output wire [MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
 );
 
 /*** CONSTANTS ****************************************************************/
@@ -82,14 +82,14 @@ module rx_module #(
   reg parity_error_r = 1'b0;
   reg stop_error_r   = 1'b0;
 
-  reg [                   3-1:0] c_state_r          = {3{1'b0}}; 
-  reg [                   3-1:0] n_state_s          = {3{1'b0}};
-  reg [      DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
-  reg [     STOP_CONF_WIDTH-1:0] stop_counter_r     = {STOP_CONF_WIDTH{1'b0}};
-  reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r   = {SAMPLE_COUNTER_WIDTH{1'b0}};
-  reg [     MAX_UART_DATA_W-1:0] rx_data_r          = {MAX_UART_DATA_W{1'b0}};
-  reg [      DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
-  reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r = {STOP_CONF_WIDTH{1'b0}};
+  reg [              3-1:0] c_state_r          = {3{1'b0}}; 
+  reg [              3-1:0] n_state_s          = {3{1'b0}};
+  reg [ DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
+  reg [    STOP_CONF_W-1:0] stop_counter_r     = {STOP_CONF_W{1'b0}};
+  reg [ SAMPLE_COUNT_W-1:0] sample_counter_r   = {SAMPLE_COUNT_W{1'b0}};
+  reg [MAX_UART_DATA_W-1:0] rx_data_r          = {MAX_UART_DATA_W{1'b0}};
+  reg [ DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
+  reg [    STOP_CONF_W-1:0] stop_counter_max_r = {STOP_CONF_W{1'b0}};
 
   /*** RTL ********************************************************************/
 
@@ -103,6 +103,8 @@ module rx_module #(
   assign rx_done_o          = rx_done_r;
   assign rx_busy_o          = busy_r;
   assign rx_parity_err_o    = parity_error_r;
+  assign rx_stop_err_o      = stop_error_r;
+  assign rx_data_o          = rx_data_r;
 
   /*** FSM ***/
 
@@ -183,7 +185,7 @@ module rx_module #(
       end
     endcase
 
-  end : comb_fsm_next_state
+  end // comb_fsm_next_state
 
   /*** Bit Counters + Data capture + Parity ***/
 
@@ -192,9 +194,9 @@ module rx_module #(
 
     if (rst_i) begin
 
-      sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
+      sample_counter_r <= {SAMPLE_COUNT_W{1'b0}};
       data_counter_r   <= {DATA_COUNTER_W{1'b0}};
-      stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
+      stop_counter_r   <= {STOP_CONF_W{1'b0}};
       rx_data_r        <= {MAX_UART_DATA_W{1'b0}};
       start_r          <= 1'b0;
       stop_r           <= 1'b0;
@@ -268,7 +270,7 @@ module rx_module #(
       end
     end
 
-  end : sync_data_capture
+  end // sync_data_capture
 
   /*** Busy  + Done ***/
 
@@ -296,7 +298,7 @@ module rx_module #(
       end
     end
 
-  end : sync_busy_done
+  end // sync_busy_done
 
   /*** Load configuration ***/
 
@@ -305,7 +307,7 @@ module rx_module #(
 
     if (rst_i) begin
       parity_en_r        <= 1'b0;
-      stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
+      stop_counter_max_r <= {STOP_CONF_W{1'b0}};
       data_counter_max_r <= {DATA_COUNTER_W{1'b0}};
     end else begin
       if (load_rx_conf_r) begin
@@ -315,6 +317,6 @@ module rx_module #(
       end
     end
 
-  end : sync_rx_conf_load
+  end // sync_rx_conf_load
 
 endmodule // rx_module

@@ -22,29 +22,29 @@
 
 module tx_module #(
   //! Maximum width of UART data
-  parameter MAX_UART_DATA_W    = 8, // max possible data width
+  parameter MAX_UART_DATA_W = 8, // max possible data width
   //! Width of stop bit configuration field
-  parameter STOP_CONF_WIDTH    = 2,
+  parameter STOP_CONF_W     = 2,
   //! Width of data bit configuration field
-  parameter DATA_CONF_WIDTH    = 2,
+  parameter DATA_CONF_W     = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter SAMPLE_COUNT_WIDTH = 4,
+  parameter SAMPLE_COUNT_W  = 4,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter TOTAL_CONF_WIDTH   = 5,
+  parameter TOTAL_CONF_W    = 5,
   //! Width of UART data counter
-  parameter DATA_COUNTER_W     = 3 
+  parameter DATA_COUNTER_W  = 3 
 ) (
-  input  wire                        clk_i,      //! Top clock      
-  input  wire                        rst_i,      //! Synchronous active-high reset        
-  input  wire                        baud_en_i,  //! Baud rate select signal          
-  input  wire                        tx_en_i,    //! Enable for Tx module      
-  input  wire                        tx_start_i, //! Start signal to initiate transmission of data         
-  input  wire [TOTAL_CONF_WIDTH-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}           
-  input  wire [ MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted        
+  input  wire                       clk_i,      //! Top clock      
+  input  wire                       rst_i,      //! Synchronous active-high reset        
+  input  wire                       baud_en_i,  //! Baud rate select signal          
+  input  wire                       tx_en_i,    //! Enable for Tx module      
+  input  wire                       tx_start_i, //! Start signal to initiate transmission of data         
+  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}           
+  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted        
 
-  output wire                        tx_done_o,  //! Tx done status signal (pulsed when Tx of one character completed) 
-  output wire                        tx_busy_o,  //! Tx status signal to indicate Tx module is busy sending something  
-  output wire                        uart_tx_o   //! External Tx output of UART
+  output wire                       tx_done_o,  //! Tx done status signal (pulsed when Tx of one character completed) 
+  output wire                       tx_busy_o,  //! Tx status signal to indicate Tx module is busy sending something  
+  output wire                       uart_tx_o   //! External Tx output of UART
 );
 
   /*** CONSTANTS **************************************************************/
@@ -73,14 +73,14 @@ module tx_module #(
   reg busy_r         = 1'b0;
   reg tx_done_r      = 1'b0;
 
-  reg [                 3-1:0] c_state_r          = {3{1'b0}}; 
-  reg [                 3-1:0] n_state_s          = {3{1'b0}};
-  reg [    DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
-  reg [   STOP_CONF_WIDTH-1:0] stop_counter_r     = {STOP_CONF_WIDTH{1'b0}};
-  reg [SAMPLE_COUNT_WIDTH-1:0] sample_counter_r   = {SAMPLE_COUNT_WIDTH{1'b0}};
-  reg [   MAX_UART_DATA_W-1:0] tx_data_r          = {MAX_UART_DATA_W{1'b0}};
-  reg [    DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
-  reg [   STOP_CONF_WIDTH-1:0] stop_counter_max_r = {STOP_CONF_WIDTH{1'b0}};
+  reg [              3-1:0] c_state_r          = {3{1'b0}}; 
+  reg [              3-1:0] n_state_s          = {3{1'b0}};
+  reg [ DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
+  reg [    STOP_CONF_W-1:0] stop_counter_r     = {STOP_CONF_W{1'b0}};
+  reg [ SAMPLE_COUNT_W-1:0] sample_counter_r   = {SAMPLE_COUNT_W{1'b0}};
+  reg [MAX_UART_DATA_W-1:0] tx_data_r          = {MAX_UART_DATA_W{1'b0}};
+  reg [ DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
+  reg [    STOP_CONF_W-1:0] stop_counter_max_r = {STOP_CONF_W{1'b0}};
 
   /*** RTL ********************************************************************/
 
@@ -165,7 +165,7 @@ module tx_module #(
       end
     endcase
 
-  end : comb_fsm_next_state
+  end // comb_fsm_next_state
 
  /*** Bit Counters ***/  
 
@@ -174,9 +174,9 @@ module tx_module #(
 
     if ( rst_i ) begin
 
-      sample_counter_r <= {SAMPLE_COUNT_WIDTH{1'b0}};
+      sample_counter_r <= {SAMPLE_COUNT_W{1'b0}};
       data_counter_r   <= {DATA_COUNTER_W{1'b0}};
-      stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
+      stop_counter_r   <= {STOP_CONF_W{1'b0}};
 
     end else if ( baud_en_i ) begin
 
@@ -204,7 +204,7 @@ module tx_module #(
       end
     end
 
-  end : sync_data_send
+  end // sync_data_send
 
   /*** Busy  + Done ***/
 
@@ -232,7 +232,7 @@ module tx_module #(
       end
     end
 
-  end : sync_busy_done  
+  end // sync_busy_done  
 
   /*** Load configuration ***/
 
@@ -242,7 +242,7 @@ module tx_module #(
     if ( rst_i ) begin
       tx_data_r          <= {MAX_UART_DATA_W{1'b0}};
       parity_en_r        <= 1'b0;
-      stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
+      stop_counter_max_r <= {STOP_CONF_W{1'b0}};
       data_counter_max_r <= {DATA_COUNTER_W{1'b0}};
     end else begin
       if ( load_tx_conf_r ) begin
@@ -253,7 +253,7 @@ module tx_module #(
       end
     end
 
-  end : sync_tx_conf_load
+  end // sync_tx_conf_load
 
   /*** Tx Data, Parity and Output ***/
 
@@ -278,6 +278,6 @@ module tx_module #(
       end
     endcase
 
-  end : comb_uart_tx_out
+  end // comb_uart_tx_out
 
 endmodule
