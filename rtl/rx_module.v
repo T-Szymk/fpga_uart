@@ -16,25 +16,23 @@
 ------------------------------------------------------------------------------*/
 /***  DESCRIPTION ***/
 //! Module to perform receipt of UART data from the uart_rx_i port.
-//!
-//! ToDo: Add stop error signal.
 /*----------------------------------------------------------------------------*/
 
 `timescale 1ns/1ps
 
 module rx_module #(
   //! Maximum width of UART data 
-  parameter  unsigned MAX_UART_DATA_W      = 8,
+  parameter  MAX_UART_DATA_W      = 8,
   //! Width of stop bit configuration field
-  parameter  unsigned STOP_CONF_WIDTH      = 2,
+  parameter  STOP_CONF_WIDTH      = 2,
   //! Width of data bit configuration field
-  parameter  unsigned DATA_CONF_WIDTH      = 2,
+  parameter  DATA_CONF_WIDTH      = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter  unsigned SAMPLE_COUNTER_WIDTH = 4,
+  parameter  SAMPLE_COUNTER_WIDTH = 4,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter  unsigned TOTAL_CONF_WIDTH     = 5,
+  parameter  TOTAL_CONF_WIDTH     = 5,
   //! Width of UART data counter
-  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W)
+  localparam DataCounterWidth = $clog2(MAX_UART_DATA_W)
 ) (
 
   input  wire                        clk_i,     //! Top clock  
@@ -45,8 +43,9 @@ module rx_module #(
   input  wire [TOTAL_CONF_WIDTH-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en}         
 
   output wire                        rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)  
-  output wire                        rx_busy_o,       //! Rx status signal indicating that a parity error was recognised in latest received data  
-  output wire                        rx_parity_err_o, //! Rx status signal to indicate Rx module is busy receiving something          
+  output wire                        rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something   
+  output wire                        rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
+  output wire                        rx_stop_err_o,   //! Rx status signal to indicate that a stop error was recognised in latest received data
   output wire [ MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
 );
 
@@ -62,23 +61,26 @@ module rx_module #(
     RecvStop   = 3'b101,
     Done       = 3'b110;
   //! Max value of symbol sample counter (16-1)
-  localparam unsigned SampleCounterMax = 4'd15;
+  localparam SampleCounterMax = 4'd15;
   //! Mid value of symbol sample counter used to determine when to latch sample
-  localparam unsigned SampleCountMid   = 4'd7;
+  localparam SampleCountMid   = 4'd7;
 
   /*** SIGNALS ****************************************************************/
 
   wire final_sample_s;
   wire last_data_sample_s;
+  wire last_stop_sample_s;
 
   reg uart_rx_s      = 1'b0;
   reg load_rx_conf_r = 1'b0;
   reg start_r        = 1'b0;
+  reg stop_r         = 1'b0;
   reg parity_r       = 1'b0;
   reg parity_en_r    = 1'b0;
   reg busy_r         = 1'b0;
   reg rx_done_r      = 1'b0;
   reg parity_error_r = 1'b0;
+  reg stop_error_r   = 1'b0;
 
   reg [                   3-1:0] c_state_r          = {3{1'b0}}; 
   reg [                   3-1:0] n_state_s          = {3{1'b0}};
@@ -94,8 +96,10 @@ module rx_module #(
   /*** ASSIGNMENTS ***/
 
   assign final_sample_s     = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
-  assign last_data_sample_s = ((sample_counter_r == SampleCounterMax) &&
+  assign last_data_sample_s = (final_sample_s &&
                                (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
+  assign last_stop_sample_s = (final_sample_s &&
+                               (stop_counter_r == stop_counter_max_r)) ? 1'b1 : 1'b0;;
   assign rx_done_o          = rx_done_r;
   assign rx_busy_o          = busy_r;
   assign rx_parity_err_o    = parity_error_r;
@@ -127,16 +131,16 @@ module rx_module #(
       end
 
       Idle : begin                                                          /**/
-        if ( uart_rx_i ) begin
+        if ( ~uart_rx_i ) begin
           n_state_s = RecvStart;
         end
       end
 
       RecvStart : begin                                                     /**/
         if ( final_sample_s) begin
-          /* check if start bit value was maintained throughout sample period
+          /* check if start bit value was maintained from start of sample period
              if not, assume glitch and return to idle */
-          if (start_r) begin
+          if (~start_r) begin
             n_state_s = RecvData;
           end else begin 
             n_state_s = Idle;
@@ -161,7 +165,7 @@ module rx_module #(
       end
 
       RecvStop : begin                                                      /**/
-        if ( final_sample_s ) begin
+        if ( last_stop_sample_s ) begin
           n_state_s = Done;
         end
       end
@@ -193,6 +197,7 @@ module rx_module #(
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
       rx_data_r        <= {MAX_UART_DATA_W{1'b0}};
       start_r          <= 1'b0;
+      stop_r           <= 1'b0;
       parity_r         <= 1'b0;
       parity_error_r   <= 1'b0;
 
@@ -212,6 +217,11 @@ module rx_module #(
         end
       end else begin
         parity_error_r <= 1'b0;
+      end
+
+      // stop checking
+      if ((c_state_r == RecvStop) && final_sample_s ) begin
+        stop_error_r <= (stop_r == 1'b0) ? 1'b1 : 1'b0;
       end
 
       // manage bit counter values at final sample of each bit
@@ -246,6 +256,9 @@ module rx_module #(
           end
           RecvParity : begin
             parity_r <= uart_rx_i;
+          end
+          RecvStop : begin
+            stop_r <= uart_rx_i;
           end
           default : begin
             // do nothing

@@ -22,17 +22,17 @@
 
 module tx_module #(
   //! Maximum width of UART data
-  parameter  unsigned MAX_UART_DATA_W    = 8, // max possible data width
+  parameter  MAX_UART_DATA_W    = 8, // max possible data width
   //! Width of stop bit configuration field
-  parameter  unsigned STOP_CONF_WIDTH    = 2,
+  parameter  STOP_CONF_WIDTH    = 2,
   //! Width of data bit configuration field
-  parameter  unsigned DATA_CONF_WIDTH    = 2,
+  parameter  DATA_CONF_WIDTH    = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter  unsigned SAMPLE_COUNT_WIDTH = 4,
+  parameter  SAMPLE_COUNT_WIDTH = 4,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter  unsigned TOTAL_CONF_WIDTH   = 5,
+  parameter  TOTAL_CONF_WIDTH   = 5,
   //! Width of UART data counter
-  localparam unsigned DataCounterWidth = $clog2(MAX_UART_DATA_W)
+  localparam DataCounterWidth = $clog2(MAX_UART_DATA_W)
 ) (
   input  wire                        clk_i,      //! Top clock      
   input  wire                        rst_i,      //! Synchronous active-high reset        
@@ -60,7 +60,7 @@ module tx_module #(
     Done       = 3'b110;
 
   //! Max value of symbol sample counter (16-1)
-  localparam unsigned SampleCounterMax = 4'd15;
+  localparam SampleCounterMax = 4'd15;
 
   /*** SIGNALS ****************************************************************/
 

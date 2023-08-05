@@ -28,15 +28,15 @@
 
 module baud_generator #(
   //! Top clock frequency
-  parameter unsigned TOP_CLK_FREQ_HZ                = 50000000,
-  parameter unsigned MIN_SAMPLE_FREQ_9600_BAUD_HZ   =   153600,
-  parameter unsigned MIN_SAMPLE_FREQ_19200_BAUD_HZ  =   307200,
-  parameter unsigned MIN_SAMPLE_FREQ_115200_BAUD_HZ =  1843200,
-  parameter unsigned MIN_SAMPLE_FREQ_256000_BAUD_HZ =  4086000,
-  parameter unsigned SAMPLE_COUNT_9600_BAUD         =      325,
-  parameter unsigned SAMPLE_COUNT_19200_BAUD        =      162,
-  parameter unsigned SAMPLE_COUNT_115200_BAUD       =       27,
-  parameter unsigned SAMPLE_COUNT_256000_BAUD       =       12
+  parameter TOP_CLK_FREQ_HZ                = 50000000,
+  parameter MIN_SAMPLE_FREQ_9600_BAUD_HZ   =   153600,
+  parameter MIN_SAMPLE_FREQ_19200_BAUD_HZ  =   307200,
+  parameter MIN_SAMPLE_FREQ_115200_BAUD_HZ =  1843200,
+  parameter MIN_SAMPLE_FREQ_256000_BAUD_HZ =  4086000,
+  parameter SAMPLE_COUNT_9600_BAUD         =      325,
+  parameter SAMPLE_COUNT_19200_BAUD        =      162,
+  parameter SAMPLE_COUNT_115200_BAUD       =       27,
+  parameter SAMPLE_COUNT_256000_BAUD       =       12
 ) (
   input  wire         clk_i,      //! Clock
   input  wire         rst_i,      //! Active-high synchronous reset
