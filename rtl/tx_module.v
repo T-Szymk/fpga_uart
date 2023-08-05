@@ -22,17 +22,17 @@
 
 module tx_module #(
   //! Maximum width of UART data
-  parameter  MAX_UART_DATA_W    = 8, // max possible data width
+  parameter MAX_UART_DATA_W    = 8, // max possible data width
   //! Width of stop bit configuration field
-  parameter  STOP_CONF_WIDTH    = 2,
+  parameter STOP_CONF_WIDTH    = 2,
   //! Width of data bit configuration field
-  parameter  DATA_CONF_WIDTH    = 2,
+  parameter DATA_CONF_WIDTH    = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter  SAMPLE_COUNT_WIDTH = 4,
+  parameter SAMPLE_COUNT_WIDTH = 4,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter  TOTAL_CONF_WIDTH   = 5,
+  parameter TOTAL_CONF_WIDTH   = 5,
   //! Width of UART data counter
-  localparam DataCounterWidth = $clog2(MAX_UART_DATA_W)
+  parameter DATA_COUNTER_W     = 3 
 ) (
   input  wire                        clk_i,      //! Top clock      
   input  wire                        rst_i,      //! Synchronous active-high reset        
@@ -75,11 +75,11 @@ module tx_module #(
 
   reg [                 3-1:0] c_state_r          = {3{1'b0}}; 
   reg [                 3-1:0] n_state_s          = {3{1'b0}};
-  reg [  DataCounterWidth-1:0] data_counter_r     = {DataCounterWidth{1'b0}};
+  reg [    DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
   reg [   STOP_CONF_WIDTH-1:0] stop_counter_r     = {STOP_CONF_WIDTH{1'b0}};
   reg [SAMPLE_COUNT_WIDTH-1:0] sample_counter_r   = {SAMPLE_COUNT_WIDTH{1'b0}};
   reg [   MAX_UART_DATA_W-1:0] tx_data_r          = {MAX_UART_DATA_W{1'b0}};
-  reg [  DataCounterWidth-1:0] data_counter_max_r = {DataCounterWidth{1'b0}};
+  reg [    DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
   reg [   STOP_CONF_WIDTH-1:0] stop_counter_max_r = {STOP_CONF_WIDTH{1'b0}};
 
   /*** RTL ********************************************************************/
@@ -175,7 +175,7 @@ module tx_module #(
     if ( rst_i ) begin
 
       sample_counter_r <= {SAMPLE_COUNT_WIDTH{1'b0}};
-      data_counter_r   <= {DataCounterWidth{1'b0}};
+      data_counter_r   <= {DATA_COUNTER_W{1'b0}};
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
 
     end else if ( baud_en_i ) begin
@@ -243,7 +243,7 @@ module tx_module #(
       tx_data_r          <= {MAX_UART_DATA_W{1'b0}};
       parity_en_r        <= 1'b0;
       stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
-      data_counter_max_r <= {DataCounterWidth{1'b0}};
+      data_counter_max_r <= {DATA_COUNTER_W{1'b0}};
     end else begin
       if ( load_tx_conf_r ) begin
         tx_data_r          <= tx_data_i;

@@ -22,44 +22,44 @@
 
 module uart_controller #(
   //! Frequency of input clock in Hz
-  parameter  TOP_CLK_FREQ_HZ    = 50000000,
+  parameter TOP_CLK_FREQ_HZ    = 50000000,
   //! Maximum width of UART data 
-  parameter  MAX_UART_DATA_W    = 8,
+  parameter MAX_UART_DATA_W    = 8,
   //! Width of stop bit configuration field
-  parameter  STOP_CONF_WIDTH    = 2,
+  parameter STOP_CONF_WIDTH    = 2,
   //! Width of data bit configuration field
-  parameter  DATA_CONF_WIDTH    = 2,
-  //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter  SAMPLE_COUNT_WIDTH = $clog2(16),
+  parameter DATA_CONF_WIDTH    = 2,
+  //! Width of sample counter within Tx and Rx module (sampled 16 times) = $clog2(16)
+  parameter SAMPLE_COUNT_WIDTH = 4,
   //! Number of Baud rate values
-  parameter  N_BAUD_RATE_VALS   = 4,
-  //! Width of Baud rate select signal
-  localparam BaudRateSelWidth   = $clog2(N_BAUD_RATE_VALS),
+  parameter N_BAUD_RATE_VALS   = 4,
+  //! Width of Baud rate select signal = $clog2(N_BAUD_RATE_VALS)
+  parameter BAUD_RATE_SEL_W    = 2,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  localparam TotalConfWidth     = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
+  parameter TOTAL_CONF_W       = STOP_CONF_WIDTH + DATA_CONF_WIDTH + 1
 )(  
-  input  wire                        clk_i,      //! Top clock
-  input  wire                        rst_i,      //! Synchronous active-high reset  
-  input  wire [BaudRateSelWidth-1:0] baud_sel_i, //! Baud rate select signal
+  input  wire                       clk_i,      //! Top clock
+  input  wire                       rst_i,      //! Synchronous active-high reset  
+  input  wire [BAUD_RATE_SEL_W-1:0] baud_sel_i, //! Baud rate select signal
   
-  input  wire                        tx_en_i,    //! Enable for Tx module
-  input  wire                        tx_start_i, //! Start signal to initiate transmission of data
-  input  wire [  TotalConfWidth-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}  
-  input  wire [ MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted
+  input  wire                       tx_en_i,    //! Enable for Tx module
+  input  wire                       tx_start_i, //! Start signal to initiate transmission of data
+  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}  
+  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted
   
-  input  wire                        rx_en_i,   //! Enable for Rx module
-  input  wire                        uart_rx_i, //! External Rx input of UART   
-  input  wire [  TotalConfWidth-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
+  input  wire                       rx_en_i,   //! Enable for Rx module
+  input  wire                       uart_rx_i, //! External Rx input of UART   
+  input  wire [   TOTAL_CONF_W-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
   
-  output wire                        tx_done_o, //! Tx done status signal (pulsed when Tx of one character completed) 
-  output wire                        tx_busy_o, //! Tx status signal to indicate Tx module is busy sending something  
-  output wire                        uart_tx_o, //! External Tx output of UART
+  output wire                       tx_done_o, //! Tx done status signal (pulsed when Tx of one character completed) 
+  output wire                       tx_busy_o, //! Tx status signal to indicate Tx module is busy sending something  
+  output wire                       uart_tx_o, //! External Tx output of UART
   
-  output wire                        rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)
-  output wire                        rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
-  output wire                        rx_stop_err_o,   //! Rx status signal indicating that a stop error was recognised in latest received data
-  output wire                        rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something  
-  output wire [ MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
+  output wire                       rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)
+  output wire                       rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
+  output wire                       rx_stop_err_o,   //! Rx status signal indicating that a stop error was recognised in latest received data
+  output wire                       rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something  
+  output wire [MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
 );
 
   /*** CONSTANTS **************************************************************/
@@ -80,6 +80,9 @@ module uart_controller #(
   localparam SAMPLE_COUNT_115200_BAUD = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_115200_BAUD_HZ );
   //! Max value of sample counter to allow sampling of each symbol 16x @ 256000 Baud
   localparam SAMPLE_COUNT_256000_BAUD = ( TOP_CLK_FREQ_HZ / MIN_SAMPLE_FREQ_256000_BAUD_HZ );
+
+  //! Width of counter used to counter the maximum number of data bits (MAX_UART_DATA_W)
+  localparam DataCounterWidth = $clog2(MAX_UART_DATA_W);
 
   /*** SIGNALS ****************************************************************/
 
@@ -113,7 +116,8 @@ module uart_controller #(
     .STOP_CONF_WIDTH    ( STOP_CONF_WIDTH    ),         
     .DATA_CONF_WIDTH    ( DATA_CONF_WIDTH    ),         
     .SAMPLE_COUNT_WIDTH ( SAMPLE_COUNT_WIDTH ),
-    .TOTAL_CONF_WIDTH   ( TotalConfWidth     )             
+    .TOTAL_CONF_WIDTH   ( TOTAL_CONF_W       ),
+    .DATA_COUNTER_W     ( DataCounterWidth   )          
   ) i_tx_module (
     .clk_i      ( clk_i      ),    
     .rst_i      ( rst_i      ),    
@@ -132,7 +136,8 @@ module uart_controller #(
     .STOP_CONF_WIDTH    ( STOP_CONF_WIDTH    ),    
     .DATA_CONF_WIDTH    ( DATA_CONF_WIDTH    ),    
     .SAMPLE_COUNT_WIDTH ( SAMPLE_COUNT_WIDTH ),
-    .TOTAL_CONF_WIDTH   ( TotalConfWidth     )        
+    .TOTAL_CONF_WIDTH   ( TOTAL_CONF_W       ),
+    .DATA_COUNTER_W     ( DataCounterWidth   )        
   ) i_rx_module (
     .clk_i           ( clk_i           ),     
     .rst_i           ( rst_i           ),     

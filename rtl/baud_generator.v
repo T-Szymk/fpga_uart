@@ -46,7 +46,7 @@ module baud_generator #(
 
   /*** CONSTANTS **************************************************************/
 
-  localparam integer SAMPLE_COUNT_WIDTH = $clog2(SAMPLE_COUNT_256000_BAUD + 1);
+  localparam SAMPLE_COUNT_WIDTH = $clog2(SAMPLE_COUNT_256000_BAUD + 1);
 
   /*** SIGNALS ****************************************************************/
 

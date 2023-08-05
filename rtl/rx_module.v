@@ -22,17 +22,17 @@
 
 module rx_module #(
   //! Maximum width of UART data 
-  parameter  MAX_UART_DATA_W      = 8,
+  parameter MAX_UART_DATA_W      = 8,
   //! Width of stop bit configuration field
-  parameter  STOP_CONF_WIDTH      = 2,
+  parameter STOP_CONF_WIDTH      = 2,
   //! Width of data bit configuration field
-  parameter  DATA_CONF_WIDTH      = 2,
+  parameter DATA_CONF_WIDTH      = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
-  parameter  SAMPLE_COUNTER_WIDTH = 4,
+  parameter SAMPLE_COUNTER_WIDTH = 4,
   //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter  TOTAL_CONF_WIDTH     = 5,
+  parameter TOTAL_CONF_WIDTH     = 5,
   //! Width of UART data counter
-  localparam DataCounterWidth = $clog2(MAX_UART_DATA_W)
+  parameter DATA_COUNTER_W       = 3 
 ) (
 
   input  wire                        clk_i,     //! Top clock  
@@ -84,11 +84,11 @@ module rx_module #(
 
   reg [                   3-1:0] c_state_r          = {3{1'b0}}; 
   reg [                   3-1:0] n_state_s          = {3{1'b0}};
-  reg [    DataCounterWidth-1:0] data_counter_r     = {DataCounterWidth{1'b0}};
+  reg [      DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
   reg [     STOP_CONF_WIDTH-1:0] stop_counter_r     = {STOP_CONF_WIDTH{1'b0}};
   reg [SAMPLE_COUNTER_WIDTH-1:0] sample_counter_r   = {SAMPLE_COUNTER_WIDTH{1'b0}};
   reg [     MAX_UART_DATA_W-1:0] rx_data_r          = {MAX_UART_DATA_W{1'b0}};
-  reg [    DataCounterWidth-1:0] data_counter_max_r = {DataCounterWidth{1'b0}};
+  reg [      DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
   reg [     STOP_CONF_WIDTH-1:0] stop_counter_max_r = {STOP_CONF_WIDTH{1'b0}};
 
   /*** RTL ********************************************************************/
@@ -193,7 +193,7 @@ module rx_module #(
     if (rst_i) begin
 
       sample_counter_r <= {SAMPLE_COUNTER_WIDTH{1'b0}};
-      data_counter_r   <= {DataCounterWidth{1'b0}};
+      data_counter_r   <= {DATA_COUNTER_W{1'b0}};
       stop_counter_r   <= {STOP_CONF_WIDTH{1'b0}};
       rx_data_r        <= {MAX_UART_DATA_W{1'b0}};
       start_r          <= 1'b0;
@@ -306,7 +306,7 @@ module rx_module #(
     if (rst_i) begin
       parity_en_r        <= 1'b0;
       stop_counter_max_r <= {STOP_CONF_WIDTH{1'b0}};
-      data_counter_max_r <= {DataCounterWidth{1'b0}};
+      data_counter_max_r <= {DATA_COUNTER_W{1'b0}};
     end else begin
       if (load_rx_conf_r) begin
         parity_en_r        <= rx_conf_i[0];
