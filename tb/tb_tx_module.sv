@@ -74,6 +74,13 @@ module tb_tx_module #(
     $dumpfile("tb_tx_module.vcd");
     $dumpvars;
 
+  end
+
+  initial begin
+
+    $dumpfile("tb_tx_module.vcd");
+    $dumpvars;
+
     // initialise dut values
     rst            = 1'b1;
     dut_baud_en_i  =  '0;

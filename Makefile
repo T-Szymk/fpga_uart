@@ -75,6 +75,8 @@ lint: clean_verilator init
 verilate: clean_verilator init
 	$(VERILATOR) \
 	-cc --exe \
+	--coverage \
+	--trace-fst \
 	-O3 \
 	$(VERIL_FLAGS) \
 	$(VERIL_WARNS) \

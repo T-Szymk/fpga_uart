@@ -23,5 +23,7 @@ int main(int argc, char** argv) {
 
   top->final();
 
+  Verilated::threadContextp()->coveragep()->write("coverage.dat");
+
   return 0;
 }
