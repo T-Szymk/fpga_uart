@@ -2,6 +2,8 @@
 **/*.pb
 **/*.vcd
 **/*.dir
-/build/obj_dir/*
+**/build/*
+*.dtmp
+
 
 

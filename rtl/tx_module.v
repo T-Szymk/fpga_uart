@@ -29,10 +29,10 @@ module tx_module #(
   parameter DATA_CONF_W     = 2,
   //! Width of sample counter within Tx and Rx module (sampled 16 times)
   parameter SAMPLE_COUNT_W  = 4,
-  //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter TOTAL_CONF_W    = 5,
   //! Width of UART data counter
-  parameter DATA_COUNTER_W  = 3 
+  parameter DATA_COUNTER_W  = 3,
+  //! Total width of configuration data bits sent to Tx and Rx modules
+  parameter TOTAL_CONF_W    = STOP_CONF_W + DATA_CONF_W + 1
 ) (
   input  wire                       clk_i,      //! Top clock      
   input  wire                       rst_i,      //! Synchronous active-high reset        
