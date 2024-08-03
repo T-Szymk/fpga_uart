@@ -1,2 +1,3 @@
-tb_tx_module.sv
-tb_uart_controller.sv
+./tb/tb_tx_module.sv
+./tb/tb_uart_controller.sv
+./tb/tb_fifo.sv

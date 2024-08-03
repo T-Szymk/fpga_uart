@@ -1,5 +1,6 @@
 ./rtl/baud_generator.v
-./rtl/rtl_files.v
 ./rtl/rx_module.v
 ./rtl/tx_module.v
 ./rtl/uart_controller.v
+./rtl/bram.v
+./rtl/fifo.v

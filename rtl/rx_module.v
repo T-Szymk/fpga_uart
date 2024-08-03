@@ -99,7 +99,7 @@ module rx_module #(
   assign last_data_sample_s = (final_sample_s &&
                                (data_counter_r == data_counter_max_r)) ? 1'b1 : 1'b0;
   assign last_stop_sample_s = (final_sample_s &&
-                               (stop_counter_r == stop_counter_max_r)) ? 1'b1 : 1'b0;;
+                               (stop_counter_r == stop_counter_max_r)) ? 1'b1 : 1'b0;
   assign rx_done_o          = rx_done_r;
   assign rx_busy_o          = busy_r;
   assign rx_parity_err_o    = parity_error_r;

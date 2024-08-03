@@ -13,7 +13,7 @@ Target Baud rates:
 
 Configuration:
 * Data width = 5 - 8 bits,
-* Stop = 1 - 3 bits,
+* Stop       = 1 - 3 bits,
 * Optional parity bit.
 
 Target support for APB registers for control. 

@@ -94,7 +94,7 @@ module baud_generator #(
     end else begin 
       baud_sel_r <= baud_sel_i;
     end
-  
+
   end
 
   //! Assign max value of baud clock counter
@@ -125,9 +125,9 @@ module baud_generator #(
   //! Raise baud update if select value is updated for 1 clock cycle
   always @( baud_sel_r, baud_sel_i ) begin : sync_baud_update
 
-    if ( baud_sel_r != baud_sel_i ) begin 
+    if ( baud_sel_r != baud_sel_i ) begin
       select_update_s = 1'b1;
-    end else begin 
+    end else begin
       select_update_s = 1'b0;
     end
 

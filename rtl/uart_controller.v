@@ -41,25 +41,39 @@ module uart_controller #(
   input  wire                       clk_i,      //! Top clock
   input  wire                       rst_i,      //! Synchronous active-high reset  
   input  wire [BAUD_RATE_SEL_W-1:0] baud_sel_i, //! Baud rate select signal
+  //! Enable for Tx module
+  input  wire                       tx_en_i,    
+  //! Start signal to initiate transmission of data
+  input  wire                       tx_start_i, 
+  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}  
+  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,  
+  //! Tx data to be transmitted
+  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,  
   
-  input  wire                       tx_en_i,    //! Enable for Tx module
-  input  wire                       tx_start_i, //! Start signal to initiate transmission of data
-  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}  
-  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted
+  //! Enable for Rx module
+  input  wire                       rx_en_i,   
+  //! External Rx input of UART   
+  input  wire                       uart_rx_i, 
+  //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
+  input  wire [   TOTAL_CONF_W-1:0] rx_conf_i, 
   
-  input  wire                       rx_en_i,   //! Enable for Rx module
-  input  wire                       uart_rx_i, //! External Rx input of UART   
-  input  wire [   TOTAL_CONF_W-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
+  //! Tx done status signal (pulsed when Tx of one character completed) 
+  output reg                        tx_done_o, 
+  //! Tx status signal to indicate Tx module is busy sending something  
+  output reg                        tx_busy_o, 
+  //! External Tx output of UART
+  output reg                        uart_tx_o, 
   
-  output wire                       tx_done_o, //! Tx done status signal (pulsed when Tx of one character completed) 
-  output wire                       tx_busy_o, //! Tx status signal to indicate Tx module is busy sending something  
-  output wire                       uart_tx_o, //! External Tx output of UART
-  
-  output wire                       rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)
-  output wire                       rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
-  output wire                       rx_stop_err_o,   //! Rx status signal indicating that a stop error was recognised in latest received data
-  output wire                       rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something  
-  output wire [MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
+  //! Rx done status signal (pulsed when Rx of one character completed)
+  output reg                        rx_done_o,       
+  //! Rx status signal indicating that a parity error was recognised in latest received data
+  output reg                        rx_parity_err_o, 
+  //! Rx status signal indicating that a stop error was recognised in latest received data
+  output reg                        rx_stop_err_o,   
+  //! Rx status signal to indicate Rx module is busy receiving something  
+  output reg                        rx_busy_o,       
+  //! Rx data that has been received
+  output reg  [MAX_UART_DATA_W-1:0] rx_data_o        
 );
 
   /*** CONSTANTS **************************************************************/
@@ -88,9 +102,12 @@ module uart_controller #(
 
   wire baud_en_s;
   
-  reg uart_rx_sync0_r = 1'b0; //! Synchroniser register 0 for incoming Rx signal
-  reg uart_rx_sync1_r = 1'b0; //! Synchroniser register 1 for incoming Rx signal
-  reg uart_rx_sync2_r = 1'b0; //! Synchroniser register 2 for incoming Rx signal
+  //! Synchroniser register 0 for incoming Rx signal
+  reg uart_rx_sync0_r; 
+  //! Synchroniser register 1 for incoming Rx signal
+  reg uart_rx_sync1_r; 
+  //! Synchroniser register 2 for incoming Rx signal
+  reg uart_rx_sync2_r; 
 
   /*** INSTANTIATIONS *********************************************************/
   

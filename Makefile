@@ -25,19 +25,22 @@ RTL_DIR         ?= $(CURR_DIR)/rtl
 TB_DIR          ?= $(CURR_DIR)/tb
 SIM_DIR         ?= $(CURR_DIR)/sim
 
-TOP_MODULE  ?= tb_tx_module
+TOP_MODULE  ?= tb_fifo
 
 RTL_FILES ?= \
   $(RTL_DIR)/baud_generator.v \
   $(RTL_DIR)/rx_module.v \
   $(RTL_DIR)/tx_module.v \
-  $(RTL_DIR)/uart_controller.v
+  $(RTL_DIR)/uart_controller.v \
+	$(RTL_DIR)/rtl/bram.v \
+  $(RTL_DIR)/rtl/fifo.v
 
 TB_FILES  ?= \
   $(TB_DIR)/tb_tx_module.sv \
-  $(TB_DIR)/tb_uart_controller.sv
+  $(TB_DIR)/tb_uart_controller.sv \
+	$(TB_DIR)/tb_fifo.sv
 
-SIM_FILES ?= \
+VERILATOR_TB ?= \
 	$(SIM_DIR)/$(TOP_MODULE)_sim_main.cpp
 
 VERIL_WARNS ?= -Wall 
@@ -50,17 +53,21 @@ VERIL_FLAGS ?= \
 	--timing \
 	-Mdir $(VERIL_BUILD_DIR)
 
+LIBS = \
+	-L $(BUILD_DIR)/fpga_uart_rtl_lib \
+	-L $(BUILD_DIR)/fpga_uart_tb_lib
 
-.PHONY: all
-all: clean init
+VOPT_OPTS ?= \
+	"+acc=npr"
 
+# VERILATOR FLOW
 
 show-config:
-	$(VERILATOR) -v
+	$(VERILATOR) -V
 
 
-.PHONY: lint
-lint: clean_verilator init
+.PHONY: vlint
+vlint: clean_verilator init
 	$(VERILATOR) \
 	--lint-only \
 	$(VERIL_FLAGS) \
@@ -68,7 +75,7 @@ lint: clean_verilator init
 	$(VERIL_SUPPRESS) \
 	$(RTL_FILES) \
 	$(TB_FILES) \
-	$(SIM_FILES)
+	$(VERILATOR_TB)
 
 
 .PHONY: verilate
@@ -83,13 +90,40 @@ verilate: clean_verilator init
 	$(VERIL_SUPPRESS) \
 	$(RTL_FILES) \
 	$(TB_FILES) \
-	$(SIM_FILES) \
+	$(VERILATOR_TB) \
 	--build -j `nproc`
 
 
 init:
 	@echo "-- CREATING BUILD DIR ----------" 
 	@mkdir -p $(BUILD_DIR)
+
+# QUESTA FLOW
+
+.PHONY: lib
+lib: clean init
+	vlib $(BUILD_DIR)/fpga_uart_rtl_lib
+	vlib $(BUILD_DIR)/fpga_uart_tb_lib
+
+.PHONY: compile
+compile: lib
+	vlog -work $(BUILD_DIR)/fpga_uart_rtl_lib -f $(RTL_DIR)/rtl_files.list
+	vlog -sv -work $(BUILD_DIR)/fpga_uart_tb_lib -f $(TB_DIR)/tb_files.list
+
+.PHONY: elaborate
+elaborate: compile
+	cd $(BUILD_DIR) && \
+	vopt $(LIBS) -work fpga_uart_tb_lib $(VOPT_OPTS) $(TOP_MODULE) -o $(TOP_MODULE)_opt
+
+.PHONY: sim
+sim: elaborate
+	cd $(BUILD_DIR) && \
+	vsim -work fpga_uart_tb_lib -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE)_opt -do $(SIM_DIR)/log.do
+
+.PHONY: simc
+simc: elaborate
+	cd $(BUILD_DIR) && \
+	vsim -work fpga_uart_tb_lib -c -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE)_opt -do $(SIM_DIR)/log_c.do
 
 
 .PHONY: clean

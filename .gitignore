@@ -4,6 +4,7 @@
 **/*.dir
 **/build/*
 *.dtmp
-
+**/.vscode
+**/modelsim.ini
 
 

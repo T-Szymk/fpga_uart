@@ -17,6 +17,8 @@
 -- 2023-06-14  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 
+`timescale 1ns/1ps
+
 module tb_tx_module #(
   parameter time     CLOCK_PERIOD         = 20ns,
   parameter unsigned MAX_DATA_WIDTH       = 8,
@@ -89,7 +91,7 @@ module tb_tx_module #(
     dut_tx_conf_i  = 5'b11000; // 8b data, 1b stop and N parity
     dut_tx_data_i  = 8'hAA;
 
-    #(5*CLOCK_PERIOD);
+    #(50*CLOCK_PERIOD);
     @(negedge clk);
 
     rst = 1'b0;
