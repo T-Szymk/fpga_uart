@@ -32,10 +32,10 @@ module fifo #(
   input  wire [WIDTH-1:0] data_i,
   output wire [WIDTH-1:0] data_o,
   // status
-  output wire              full_o,
-  output wire              empty_o,
-  output wire              nearly_full_o,
-  output wire              nearly_empty_o
+  output wire             full_o,
+  output wire             empty_o,
+  output wire             nearly_full_o,
+  output wire             nearly_empty_o
 );
 
   /*** CONSTANTS **************************************************************/

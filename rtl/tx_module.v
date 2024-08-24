@@ -13,6 +13,7 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
+-- 2024-08-24  1.1      TZS     Add control logic for FIFO mode
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 //! Module to perform transmission of UART data onto the uart_tx_o port.
@@ -34,17 +35,19 @@ module tx_module #(
   //! Total width of configuration data bits sent to Tx and Rx modules
   parameter TOTAL_CONF_W    = STOP_CONF_W + DATA_CONF_W + 1
 ) (
-  input  wire                       clk_i,      //! Top clock      
-  input  wire                       rst_i,      //! Synchronous active-high reset        
-  input  wire                       baud_en_i,  //! Baud rate select signal          
-  input  wire                       tx_en_i,    //! Enable for Tx module      
-  input  wire                       tx_start_i, //! Start signal to initiate transmission of data         
-  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,  //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}           
-  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,  //! Tx data to be transmitted        
-
-  output wire                       tx_done_o,  //! Tx done status signal (pulsed when Tx of one character completed) 
-  output wire                       tx_busy_o,  //! Tx status signal to indicate Tx module is busy sending something  
-  output wire                       uart_tx_o   //! External Tx output of UART
+  input  wire                       clk_i,        //! Top clock      
+  input  wire                       rst_i,        //! Synchronous active-high reset        
+  input  wire                       baud_en_i,    //! Baud rate select signal          
+  input  wire                       tx_en_i,      //! Enable for Tx module      
+  input  wire                       tx_start_i,   //! Start signal to initiate transmission of data         
+  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,    //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}           
+  input  wire [MAX_UART_DATA_W-1:0] tx_data_i,    //! Tx data to be transmitted
+  input  wire                       tx_fifo_en_i, //! Enable for the Tx FIFO
+                                
+  output wire                       tx_done_o,    //! Tx done status signal (pulsed when Tx of one character completed) 
+  output wire                       tx_busy_o,    //! Tx status signal to indicate Tx module is busy sending something  
+  output wire                       uart_tx_o,    //! External Tx output of UART
+  output wire                       tx_fifo_pop_o //! Pop control for Tx FIFO
 );
 
   /*** CONSTANTS **************************************************************/
