@@ -42,6 +42,7 @@ module tb_tx_module #(
   bit                      dut_tx_done_o;
   bit                      dut_busy_o;
   bit                      dut_uart_tx_o;
+  bit                      dut_tx_fifo_pop_o;
 
   // clock generation
   initial begin
@@ -59,16 +60,18 @@ module tb_tx_module #(
     .DATA_CONF_W     ( DATA_CONF_WIDTH      ),
     .SAMPLE_COUNT_W  ( SAMPLE_COUNTER_WIDTH )
   ) i_dut (
-    .clk_i      ( clk            ),
-    .rst_i      ( rst            ),
-    .baud_en_i  ( dut_baud_en_i  ),
-    .tx_en_i    ( dut_tx_en_i    ),
-    .tx_start_i ( dut_tx_start_i ),
-    .tx_conf_i  ( dut_tx_conf_i  ),
-    .tx_data_i  ( dut_tx_data_i  ),
-    .tx_done_o  ( dut_tx_done_o  ),
-    .tx_busy_o  ( dut_busy_o     ),
-    .uart_tx_o  ( dut_uart_tx_o  )
+    .clk_i         ( clk               ),
+    .rst_i         ( rst               ),
+    .baud_en_i     ( dut_baud_en_i     ),
+    .tx_en_i       ( dut_tx_en_i       ),
+    .tx_start_i    ( dut_tx_start_i    ),
+    .tx_conf_i     ( dut_tx_conf_i     ),
+    .tx_data_i     ( dut_tx_data_i     ),
+    .tx_fifo_en_i  ( 1'b0              ),
+    .tx_done_o     ( dut_tx_done_o     ),
+    .tx_busy_o     ( dut_busy_o        ),
+    .uart_tx_o     ( dut_uart_tx_o     ),
+    .tx_fifo_pop_o ( dut_tx_fifo_pop_o )
   );
 
   initial begin

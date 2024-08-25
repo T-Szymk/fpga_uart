@@ -25,20 +25,19 @@ RTL_DIR         ?= $(CURR_DIR)/rtl
 TB_DIR          ?= $(CURR_DIR)/tb
 SIM_DIR         ?= $(CURR_DIR)/sim
 
-TOP_MODULE  ?= tb_fifo
+TOP_MODULE  ?= tb_tx_module
 
 RTL_FILES ?= \
   $(RTL_DIR)/baud_generator.v \
   $(RTL_DIR)/rx_module.v \
   $(RTL_DIR)/tx_module.v \
   $(RTL_DIR)/uart_controller.v \
-	$(RTL_DIR)/rtl/bram.v \
-  $(RTL_DIR)/rtl/fifo.v
+	$(RTL_DIR)/bram.v \
+  $(RTL_DIR)/fifo.v
 
 TB_FILES  ?= \
   $(TB_DIR)/tb_tx_module.sv \
-  $(TB_DIR)/tb_uart_controller.sv \
-	$(TB_DIR)/tb_fifo.sv
+  $(TB_DIR)/tb_uart_controller.sv
 
 VERILATOR_TB ?= \
 	$(SIM_DIR)/$(TOP_MODULE)_sim_main.cpp

@@ -43,7 +43,7 @@ module tx_module #(
   input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,    //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}           
   input  wire [MAX_UART_DATA_W-1:0] tx_data_i,    //! Tx data to be transmitted
   input  wire                       tx_fifo_en_i, //! Enable for the Tx FIFO
-                                
+
   output wire                       tx_done_o,    //! Tx done status signal (pulsed when Tx of one character completed) 
   output wire                       tx_busy_o,    //! Tx status signal to indicate Tx module is busy sending something  
   output wire                       uart_tx_o,    //! External Tx output of UART
@@ -75,6 +75,7 @@ module tx_module #(
   reg parity_en_r    = 1'b0;
   reg busy_r         = 1'b0;
   reg tx_done_r      = 1'b0;
+  reg tx_fifo_pop_s  = 1'b0;
 
   reg [              3-1:0] c_state_r          = {3{1'b0}}; 
   reg [              3-1:0] n_state_s          = {3{1'b0}};
@@ -94,6 +95,7 @@ module tx_module #(
   assign uart_tx_o           = uart_tx_s;
   assign parity_bit_s        = ^tx_data_r; 
   assign sample_count_done_s = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0; 
+  assign tx_fifo_pop_o       = tx_fifo_pop_s;
 
   /*** FSM ***/
 
@@ -111,7 +113,9 @@ module tx_module #(
   //! Comb next state assignment for Tx FSM
   always @(*) begin : comb_fsm_next_state
 
-    n_state_s = c_state_r;
+    // default assignments
+    n_state_s     = c_state_r;
+    tx_fifo_pop_s = 1'b0;
 
     case(c_state_r)
 
@@ -124,6 +128,7 @@ module tx_module #(
       Idle : begin                                                          /**/
         if ( (tx_start_i == 1'b1) ) begin
           n_state_s      = SendStart;
+          tx_fifo_pop_s  = 1'b1;
         end
       end
 
