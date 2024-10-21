@@ -25,7 +25,7 @@ RTL_DIR         ?= $(CURR_DIR)/rtl
 TB_DIR          ?= $(CURR_DIR)/tb
 SIM_DIR         ?= $(CURR_DIR)/sim
 
-TOP_MODULE  ?= tb_tx_module
+TOP_MODULE  ?= tb_uart_controller
 
 RTL_FILES ?= \
   $(RTL_DIR)/baud_generator.v \

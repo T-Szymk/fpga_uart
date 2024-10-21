@@ -46,17 +46,17 @@ module uart_controller #(
   input  wire [   TOTAL_CONF_W-1:0] rx_conf_i,       //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
   input  wire                       rx_fifo_en_i,    //! Enable for the Rx FIFO
     
-  output reg                        tx_done_o,       //! Tx done status signal (pulsed when Tx of one character completed)   
-  output reg                        tx_busy_o,       //! Tx status signal to indicate Tx module is busy sending something    
-  output reg                        uart_tx_o,       //! External Tx output of UART
-  output reg                        tx_fifo_pop_o,   //! Pop control for Tx FIFO
+  output wire                       tx_done_o,       //! Tx done status signal (pulsed when Tx of one character completed)   
+  output wire                       tx_busy_o,       //! Tx status signal to indicate Tx module is busy sending something    
+  output wire                       uart_tx_o,       //! External Tx output of UART
+  output wire                       tx_fifo_pop_o,   //! Pop control for Tx FIFO
   
-  output reg                        rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)                    
-  output reg                        rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data                    
-  output reg                        rx_stop_err_o,   //! Rx status signal indicating that a stop error was recognised in latest received data                    
-  output reg                        rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something                      
-  output reg  [MAX_UART_DATA_W-1:0] rx_data_o,       //! Rx data that has been received
-  output reg                        rx_fifo_push_o   //! Push control for Rx FIFO
+  output wire                       rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)                    
+  output wire                       rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data                    
+  output wire                       rx_stop_err_o,   //! Rx status signal indicating that a stop error was recognised in latest received data                    
+  output wire                       rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something                      
+  output wire [MAX_UART_DATA_W-1:0] rx_data_o,       //! Rx data that has been received
+  output wire                       rx_fifo_push_o   //! Push control for Rx FIFO
 );
 
   /*** CONSTANTS **************************************************************/

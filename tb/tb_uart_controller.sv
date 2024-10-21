@@ -35,6 +35,7 @@ module tb_uart_controller;
 
   // constants and TB params
   parameter time             CLOCK_PERIOD     = 20ns;
+  parameter time             TEST_RUNTIME     = 1us;
   parameter integer unsigned TOP_CLK_FREQ_HZ  = 50000000;                   
   parameter integer unsigned MAX_UART_DATA_W  = 8;                            
   parameter integer unsigned STOP_CONF_W      = 2;                            
@@ -86,6 +87,15 @@ module tb_uart_controller;
     tb_rst = 1'b0;
   end
 
+  initial begin
+
+    $dumpfile("tb_uart_controller.vcd");
+    $dumpvars;
+
+    $timeformat(-9, 0, " ns");
+
+  end
+
   // dut instance
   uart_controller #(
     .TOP_CLK_FREQ_HZ  ( TOP_CLK_FREQ_HZ  ),
@@ -120,6 +130,30 @@ module tb_uart_controller;
     .rx_data_o        ( rx_data_s       ),
     .rx_fifo_push_o   ( rx_fifo_push_s  )
   );
+
+  // TB logic
+  initial begin
+    
+    baud_sel_s   = '0;
+    tx_en_s      = '0;
+    tx_start_s   = '0;
+    tx_conf_s    = '0;
+    tx_data_s    = '0;
+    tx_fifo_en_s = '0;
+    rx_en_s      = '0;
+    uart_rx_s    = '0;
+    rx_conf_s    = '0;
+    rx_fifo_en_s = '0;
+
+    while ($time < TEST_RUNTIME) begin
+      @(posedge tb_clk);
+    end
+
+    $display("[TB %0t] tb_uart_controller Test Complete", $time);
+
+    $finish;
+
+  end
 
   
 
