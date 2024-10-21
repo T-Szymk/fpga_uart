@@ -31,20 +31,26 @@ Test cases covered:
 
 module tb_uart_controller;
 
-  timeunit 1ns/1ps;  
+  timeunit 1ns/1ps;
+
+  import tb_uart_pkg::*;
 
   // constants and TB params
   parameter time             CLOCK_PERIOD     = 20ns;
   parameter time             TEST_RUNTIME     = 1us;
-  parameter integer unsigned TOP_CLK_FREQ_HZ  = 50000000;                   
-  parameter integer unsigned MAX_UART_DATA_W  = 8;                            
-  parameter integer unsigned STOP_CONF_W      = 2;                            
-  parameter integer unsigned DATA_CONF_W      = 2;                            
-  parameter integer unsigned SAMPLE_COUNT_W   = 4;                            
-  parameter integer unsigned N_BAUD_RATE_VALS = 4;                            
-  parameter integer unsigned BAUD_RATE_SEL_W  = 2;                            
+  parameter integer unsigned TOP_CLK_FREQ_HZ  = 50000000;
+  parameter integer unsigned MAX_UART_DATA_W  = 8;
+  parameter integer unsigned STOP_CONF_W      = 2;
+  parameter integer unsigned DATA_CONF_W      = 2;
+  parameter integer unsigned SAMPLE_COUNT_W   = 4;
+  parameter integer unsigned N_BAUD_RATE_VALS = 4;
+  parameter integer unsigned BAUD_RATE_SEL_W  = 2;
   parameter integer unsigned TOTAL_CONF_W     = STOP_CONF_W + DATA_CONF_W + 1;
 
+  // TB UART Configuration
+  localparam int unsigned UARTDataBits = 8;
+  localparam int unsigned UARTStopBits = 1;
+  localparam int unsigned UARTParityEn = 0;
 
   // signals
   bit tb_clk, tb_rst;
@@ -133,16 +139,16 @@ module tb_uart_controller;
 
   // TB logic
   initial begin
-    
+
     baud_sel_s   = '0;
     tx_en_s      = '0;
     tx_start_s   = '0;
-    tx_conf_s    = '0;
+    tx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
     tx_data_s    = '0;
     tx_fifo_en_s = '0;
     rx_en_s      = '0;
     uart_rx_s    = '0;
-    rx_conf_s    = '0;
+    rx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
     rx_fifo_en_s = '0;
 
     while ($time < TEST_RUNTIME) begin
@@ -155,6 +161,5 @@ module tb_uart_controller;
 
   end
 
-  
 
 endmodule // tb_uart_controller
