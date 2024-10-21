@@ -106,23 +106,18 @@ lib: clean init
 
 .PHONY: compile
 compile: lib
-	vlog -work $(BUILD_DIR)/fpga_uart_rtl_lib -f $(RTL_DIR)/rtl_files.list
-	vlog -sv -work $(BUILD_DIR)/fpga_uart_tb_lib -f $(TB_DIR)/tb_files.list
-
-.PHONY: elaborate
-elaborate: compile
-	cd $(BUILD_DIR) && \
-	vopt $(LIBS) -work fpga_uart_tb_lib $(VOPT_OPTS) $(TOP_MODULE) -o $(TOP_MODULE)_opt
+	vlog -work $(BUILD_DIR)/fpga_uart_rtl_lib -incr -f $(RTL_DIR)/rtl_files.list
+	vlog -sv -work $(BUILD_DIR)/fpga_uart_tb_lib -incr -f $(TB_DIR)/tb_files.list
 
 .PHONY: sim
-sim: elaborate
+sim: compile
 	cd $(BUILD_DIR) && \
-	vsim -work fpga_uart_tb_lib -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE)_opt -do $(SIM_DIR)/log.do
+	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -do $(SIM_DIR)/log.do
 
 .PHONY: simc
-simc: elaborate
+simc: compile
 	cd $(BUILD_DIR) && \
-	vsim -work fpga_uart_tb_lib -c -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE)_opt -do $(SIM_DIR)/log_c.do
+	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -c -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -do $(SIM_DIR)/log_c.do
 
 
 .PHONY: clean
