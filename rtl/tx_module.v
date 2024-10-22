@@ -160,13 +160,13 @@ module tx_module #(
 
       Done : begin                                                          /**/
         if (tx_en_i) begin
-          if ( tx_start_i == 1'b1 ) begin
-            n_state_s = SendStart;
-          end else begin
-            n_state_s = Idle;
-          end
+
+          n_state_s = Idle;
+
         end else begin
+
           n_state_s = Reset;
+
         end
       end
 
@@ -228,26 +228,30 @@ module tx_module #(
       load_tx_conf_r <= 1'b0;
       tx_fifo_pop_r  <= 1'b0;
 
-    end else if ( baud_en_i ) begin
+    end else begin
 
       tx_done_r      <= 1'b0;
       load_tx_conf_r <= 1'b0;
       tx_fifo_pop_r  <= 1'b0;
 
-      if (n_state_s == SendStart) begin
-        busy_r <= 1'b1;
-      end else if (n_state_s == Done) begin
-        busy_r    <= 1'b0;
-        tx_done_r <= 1'b1;
-      end
+      if ( baud_en_i ) begin
 
-      if (n_state_s == SendStart) begin
+        if ( n_state_s == SendStart ) begin
+          busy_r <= 1'b1;
+        end else if ( n_state_s == Done ) begin
+          busy_r    <= 1'b0;
+          tx_done_r <= 1'b1;
+        end
 
-        load_tx_conf_r <= 1'b1;
+        if ( c_state_r == Idle && n_state_s == SendStart ) begin
 
-        // remove data from FIFO if enabled
-        if (tx_fifo_en_i) begin
-          tx_fifo_pop_r <= 1'b1;
+          load_tx_conf_r <= 1'b1;
+
+          // remove data from FIFO if enabled
+          if ( tx_fifo_en_i ) begin
+            tx_fifo_pop_r <= 1'b1;
+          end
+
         end
 
       end

@@ -178,6 +178,10 @@ module tb_uart_controller;
     end
 
     tx_start_s = 1'b0;
+    
+    while (tx_done_s) begin
+      @(negedge tb_clk);
+    end
 
     @(negedge tb_clk);
 
