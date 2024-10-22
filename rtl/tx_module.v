@@ -119,24 +119,31 @@ module tx_module #(
     case(c_state_r)
 
       Reset : begin                                                         /**/
+
         if ( tx_en_i ) begin
           n_state_s = Idle;
         end
+
       end
 
       Idle : begin                                                          /**/
+
         if ( tx_start_i == 1'b1 ) begin
           n_state_s = SendStart;
         end
+
       end
 
       SendStart : begin                                                     /**/
+
         if (sample_count_done_s) begin
           n_state_s = SendData;
         end
+
       end
 
       SendData : begin                                                      /**/
+
         if (sample_count_done_s && (data_counter_r == data_counter_max_r) ) begin
           if (parity_en_r) begin
             n_state_s = SendParity;
@@ -144,35 +151,41 @@ module tx_module #(
             n_state_s = SendStop;
           end
         end
+
       end
 
       SendParity : begin                                                    /**/
+
         if (sample_count_done_s) begin
           n_state_s = SendStop;
         end
+
       end
 
       SendStop : begin                                                      /**/
-        if (sample_count_done_s && (stop_counter_r == stop_counter_max_r) ) begin
+
+        if ( sample_count_done_s && (stop_counter_r == stop_counter_max_r) ) begin
           n_state_s = Done;
         end
+
       end
 
       Done : begin                                                          /**/
+
         if (tx_en_i) begin
-
           n_state_s = Idle;
-
         end else begin
-
           n_state_s = Reset;
-
         end
+
       end
 
       default : begin                                                       /**/
+
         n_state_s = Reset;
+
       end
+
     endcase
 
   end // comb_fsm_next_state
