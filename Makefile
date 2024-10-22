@@ -27,6 +27,8 @@ SIM_DIR         ?= $(CURR_DIR)/sim
 
 TOP_MODULE  ?= tb_uart_controller
 
+DO_FILE ?= run.do
+
 RTL_FILES ?= \
   $(RTL_DIR)/baud_generator.v \
   $(RTL_DIR)/rx_module.v \
@@ -36,15 +38,18 @@ RTL_FILES ?= \
   $(RTL_DIR)/fifo.v
 
 TB_FILES  ?= \
+	$(TB_DIR)/tb_uart_pkg.sv \
   $(TB_DIR)/tb_tx_module.sv \
   $(TB_DIR)/tb_uart_controller.sv
 
 VERILATOR_TB ?= \
 	$(SIM_DIR)/$(TOP_MODULE)_sim_main.cpp
 
-VERIL_WARNS ?= -Wall 
+VERIL_WARNS ?= -Wall
 
-VERIL_SUPPRESS ?= -Wno-UNUSEDSIGNAL
+VERIL_DEFINES ?=
+
+VERIL_SUPPRESS ?=
 
 VERIL_FLAGS ?= \
   --top-module $(TOP_MODULE) \
@@ -71,11 +76,28 @@ vlint: clean_verilator init
 	--lint-only \
 	$(VERIL_FLAGS) \
 	$(VERIL_WARNS) \
+	$(VERIL_DEFINES) \
 	$(VERIL_SUPPRESS) \
 	$(RTL_FILES) \
 	$(TB_FILES) \
 	$(VERILATOR_TB)
 
+
+.PHONY: verilint
+verilint: clean_verilator init
+	$(VERILATOR) \
+	--lint-only \
+	--coverage \
+	--trace-fst \
+	-O3 \
+	$(VERIL_FLAGS) \
+	$(VERIL_WARNS) \
+	$(VERIL_DEFINES) \
+	$(VERIL_SUPPRESS) \
+	$(RTL_FILES) \
+	$(TB_FILES) \
+	$(VERILATOR_TB) \
+	--build -j `nproc`
 
 .PHONY: verilate
 verilate: clean_verilator init
@@ -112,12 +134,12 @@ compile: lib
 .PHONY: sim
 sim: compile
 	cd $(BUILD_DIR) && \
-	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -do $(SIM_DIR)/log.do
+	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -onfinish stop -do $(SIM_DIR)/$(DO_FILE)
 
 .PHONY: simc
 simc: compile
 	cd $(BUILD_DIR) && \
-	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -c -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -do $(SIM_DIR)/log_c.do
+	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -c -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -do $(SIM_DIR)/$(DO_FILE)
 
 
 .PHONY: clean

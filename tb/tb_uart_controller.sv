@@ -37,8 +37,8 @@ module tb_uart_controller;
 
   // constants and TB params
   parameter time             CLOCK_PERIOD     = 20ns;
-  parameter time             TEST_RUNTIME     = 1us;
-  parameter integer unsigned TOP_CLK_FREQ_HZ  = 50000000;
+  parameter realtime         TEST_RUNTIME     = 1ms;
+  parameter integer unsigned TOP_CLK_FREQ_HZ  = 50_000_000;
   parameter integer unsigned MAX_UART_DATA_W  = 8;
   parameter integer unsigned STOP_CONF_W      = 2;
   parameter integer unsigned DATA_CONF_W      = 2;
@@ -76,6 +76,10 @@ module tb_uart_controller;
   bit [MAX_UART_DATA_W-1:0] rx_data_s;
   bit                       rx_fifo_push_s;
 
+  // continuous assignments
+
+  assign uart_rx_s = uart_tx_s; // loopback
+
   // clock generation
   initial begin
     tb_clk = 1'b0;
@@ -98,7 +102,9 @@ module tb_uart_controller;
     $dumpfile("tb_uart_controller.vcd");
     $dumpvars;
 
+  `ifndef VERILATOR
     $timeformat(-9, 0, " ns");
+  `endif
 
   end
 
@@ -140,25 +146,73 @@ module tb_uart_controller;
   // TB logic
   initial begin
 
-    baud_sel_s   = '0;
+    baud_sel_s   = 2'b11; // 256000 Baud
     tx_en_s      = '0;
     tx_start_s   = '0;
     tx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
-    tx_data_s    = '0;
-    tx_fifo_en_s = '0;
+    tx_data_s    = 'h55;
+    tx_fifo_en_s = 1'b1;
     rx_en_s      = '0;
-    uart_rx_s    = '0;
     rx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
     rx_fifo_en_s = '0;
 
-    while ($time < TEST_RUNTIME) begin
+    while (~tb_rst) begin
       @(posedge tb_clk);
     end
 
-    $display("[TB %0t] tb_uart_controller Test Complete", $time);
+    @(posedge tb_clk);
+    @(posedge tb_clk);
+    @(negedge tb_clk);
 
+    tx_en_s = 1'b1;
+    rx_en_s = 1'b1;
+
+    @(negedge tb_clk);
+    @(negedge tb_clk);
+    @(negedge tb_clk);
+
+    tx_start_s = 1'b1;
+
+    while (~tx_done_s) begin
+      @(negedge tb_clk);
+    end
+
+    tx_start_s = 1'b0;
+
+    @(negedge tb_clk);
+
+    tx_data_s  = 'hAA;
+    tx_start_s = 1'b1;
+
+    while (tx_done_s) begin
+      @(negedge tb_clk);
+    end
+
+    while (~tx_done_s) begin
+      @(negedge tb_clk);
+    end
+
+    tx_start_s = 1'b0;
+
+    forever begin
+      @(posedge tb_clk);
+    end
+
+    $display("[TB %0t] Test logic complete", $time);
     $finish;
 
+  end
+
+  // testbench timeout
+  initial begin
+
+    while ($realtime < TEST_RUNTIME) begin
+      @(posedge tb_clk);
+    end
+
+    $display("[TB %0t] tb_uart_controller Test Timed Out", $time);
+
+    $finish;
   end
 
 

@@ -13,7 +13,7 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
--- 2024-08-24  1.1      TZS     Add control logic for FIFO mode
+-- 2024-10-22  1.1      TZS     Add control logic for FIFO mode
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 //! Module to perform transmission of UART data onto the uart_tx_o port.
@@ -35,12 +35,12 @@ module tx_module #(
   //! Total width of configuration data bits sent to Tx and Rx modules
   parameter TOTAL_CONF_W    = STOP_CONF_W + DATA_CONF_W + 1
 ) (
-  input  wire                       clk_i,        //! Top clock      
-  input  wire                       rst_i,        //! Synchronous active-high reset        
-  input  wire                       baud_en_i,    //! Baud rate select signal          
-  input  wire                       tx_en_i,      //! Enable for Tx module      
-  input  wire                       tx_start_i,   //! Start signal to initiate transmission of data         
-  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,    //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}           
+  input  wire                       clk_i,        //! Top clock
+  input  wire                       rst_i,        //! Synchronous active-high reset
+  input  wire                       baud_en_i,    //! Baud rate select signal
+  input  wire                       tx_en_i,      //! Enable for Tx module
+  input  wire                       tx_start_i,   //! Start signal to initiate transmission of data
+  input  wire [   TOTAL_CONF_W-1:0] tx_conf_i,    //! Tx configuration data conf {data[1:0], stop[1:0], parity_en}
   input  wire [MAX_UART_DATA_W-1:0] tx_data_i,    //! Tx data to be transmitted
   input  wire                       tx_fifo_en_i, //! Enable for the Tx FIFO
 
@@ -53,7 +53,7 @@ module tx_module #(
   /*** CONSTANTS **************************************************************/
 
   //! Rx fsm states
-  localparam reg [3-1:0] 
+  localparam reg [3-1:0]
     Reset      = 3'b000,
     Idle       = 3'b001,
     SendStart  = 3'b010,
@@ -75,9 +75,9 @@ module tx_module #(
   reg parity_en_r    = 1'b0;
   reg busy_r         = 1'b0;
   reg tx_done_r      = 1'b0;
-  reg tx_fifo_pop_s  = 1'b0;
+  reg tx_fifo_pop_r  = 1'b0;
 
-  reg [              3-1:0] c_state_r          = {3{1'b0}}; 
+  reg [              3-1:0] c_state_r          = {3{1'b0}};
   reg [              3-1:0] n_state_s          = {3{1'b0}};
   reg [ DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
   reg [    STOP_CONF_W-1:0] stop_counter_r     = {STOP_CONF_W{1'b0}};
@@ -93,9 +93,9 @@ module tx_module #(
   assign tx_done_o           = tx_done_r;
   assign tx_busy_o           = busy_r;
   assign uart_tx_o           = uart_tx_s;
-  assign parity_bit_s        = ^tx_data_r; 
-  assign sample_count_done_s = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0; 
-  assign tx_fifo_pop_o       = tx_fifo_pop_s;
+  assign parity_bit_s        = ^tx_data_r;
+  assign sample_count_done_s = (sample_counter_r == SampleCounterMax) ? 1'b1 : 1'b0;
+  assign tx_fifo_pop_o       = tx_fifo_pop_r;
 
   /*** FSM ***/
 
@@ -114,8 +114,7 @@ module tx_module #(
   always @(*) begin : comb_fsm_next_state
 
     // default assignments
-    n_state_s     = c_state_r;
-    tx_fifo_pop_s = 1'b0;
+    n_state_s = c_state_r;
 
     case(c_state_r)
 
@@ -126,9 +125,8 @@ module tx_module #(
       end
 
       Idle : begin                                                          /**/
-        if ( (tx_start_i == 1'b1) ) begin
-          n_state_s      = SendStart;
-          tx_fifo_pop_s  = 1'b1;
+        if ( tx_start_i == 1'b1 ) begin
+          n_state_s = SendStart;
         end
       end
 
@@ -162,7 +160,11 @@ module tx_module #(
 
       Done : begin                                                          /**/
         if (tx_en_i) begin
-          n_state_s = Idle;
+          if ( tx_start_i == 1'b1 ) begin
+            n_state_s = SendStart;
+          end else begin
+            n_state_s = Idle;
+          end
         end else begin
           n_state_s = Reset;
         end
@@ -175,9 +177,9 @@ module tx_module #(
 
   end // comb_fsm_next_state
 
- /*** Bit Counters ***/  
+ /*** Bit Counters ***/
 
-  //! Synch management of output data counters    
+  //! Synch management of output data counters
   always @(posedge clk_i) begin : sync_data_send
 
     if ( rst_i ) begin
@@ -192,7 +194,7 @@ module tx_module #(
            c_state_r == SendParity || c_state_r == SendStop ) begin
 
         sample_counter_r <= (sample_counter_r == SampleCounterMax) ? 0 : sample_counter_r + 1;
-      
+
       end
 
       if (sample_counter_r ==  SampleCounterMax) begin
@@ -216,17 +218,21 @@ module tx_module #(
 
   /*** Busy  + Done ***/
 
-  //! Synch busy and done signal generation
+  //! Synch load data, busy and done signal generation
   always @(posedge clk_i) begin : sync_busy_done
 
     if ( rst_i ) begin
+
       busy_r         <= 1'b0;
       tx_done_r      <= 1'b0;
       load_tx_conf_r <= 1'b0;
+      tx_fifo_pop_r  <= 1'b0;
+
     end else if ( baud_en_i ) begin
 
       tx_done_r      <= 1'b0;
       load_tx_conf_r <= 1'b0;
+      tx_fifo_pop_r  <= 1'b0;
 
       if (n_state_s == SendStart) begin
         busy_r <= 1'b1;
@@ -235,12 +241,19 @@ module tx_module #(
         tx_done_r <= 1'b1;
       end
 
-      if (n_state_s == SendStart) begin 
+      if (n_state_s == SendStart) begin
+
         load_tx_conf_r <= 1'b1;
+
+        // remove data from FIFO if enabled
+        if (tx_fifo_en_i) begin
+          tx_fifo_pop_r <= 1'b1;
+        end
+
       end
     end
 
-  end // sync_busy_done  
+  end // sync_busy_done
 
   /*** Load configuration ***/
 

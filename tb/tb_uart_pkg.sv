@@ -17,7 +17,7 @@
 *** DESCRIPTION ***
 --------------------------------------------------------------------------------
 Contains types, constants and functions which are used across the testbenches 
-within the FPGA UART project  
+within the FPGA UART project
 ------------------------------------------------------------------------------*/
 
 
@@ -35,30 +35,29 @@ package tb_uart_pkg;
 
   // get bit pattern for configuring UART Tx/Rx
   function automatic bit [TotalCfgWidth-1:0] get_uart_config(
-    input  int unsigned data_bits,  
-    input  int unsigned stop_bits,    
-    input  bit          parity_en
+    input  int unsigned data_bits,
+    input  int unsigned stop_bits,
+    input  int unsigned parity_en
   );
 
     automatic bit [StopCfgWidth-1:0] stop_bits_s;
     automatic bit [DataCfgWidth-1:0] data_bits_s;
+    automatic bit                    parity_en_s;
 
-    if (stop_bits > StopWidthMax)
-      $error("[TB %0t] get_uart_config - provided stop bit count too large! Max = 3", $time);
+    if (stop_bits > StopWidthMax || stop_bits < StopWidthMin)
+      $error("[TB %0t] get_uart_config - provided stop bit count out of valid range 1 - 3!", $time);
 
-    if (stop_bits < StopWidthMin)
-      $error("[TB %0t] get_uart_config - provided stop bit count too small! Min = 1", $time);
+    if (data_bits > DataWidthMax || data_bits < DataWidthMin)
+      $error("[TB %0t] get_uart_config - provided data bit count out of valid range 5 - 8!", $time);
 
-    if (data_bits > DataWidthMax)
-      $error("[TB %0t] get_uart_config - provided data bit count too large! Max = 8", $time);
-
-    if (data_bits < DataWidthMin)
-      $error("[TB %0t] get_uart_config - provided data bit count too small! Min = 5", $time);
+    if (parity_en != 0 && parity_en != 1)
+      $error("[TB %0t] get_uart_config - provided parity_en not valid!", $time);
 
     stop_bits_s = (stop_bits - StopWidthMin);
     data_bits_s = (data_bits - DataWidthMin);
+    parity_en_s = parity_en;
 
-    return {data_bits_s, stop_bits_s, parity_en};
+    return {data_bits_s, stop_bits_s, parity_en_s};
 
   endfunction
 
