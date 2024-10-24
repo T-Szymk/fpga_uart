@@ -12,7 +12,7 @@
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
--- 2024-08-25  1.0      TZS     Created
+-- 2024-10-24  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 /*
@@ -37,7 +37,7 @@ module tb_uart_controller;
 
   // constants and TB params
   parameter time             CLOCK_PERIOD     = 20ns;
-  parameter realtime         TEST_RUNTIME     = 1ms;
+  parameter realtime         TEST_RUNTIME     = 10ms;
   parameter integer unsigned TOP_CLK_FREQ_HZ  = 50_000_000;
   parameter integer unsigned MAX_UART_DATA_W  = 8;
   parameter integer unsigned STOP_CONF_W      = 2;
@@ -51,6 +51,7 @@ module tb_uart_controller;
   localparam int unsigned UARTDataBits = 8;
   localparam int unsigned UARTStopBits = 1;
   localparam int unsigned UARTParityEn = 0;
+  localparam baud_rate_e  BaudRate     = BAUD9600;
 
   // signals
   bit tb_clk, tb_rst;
@@ -152,7 +153,7 @@ module tb_uart_controller;
     automatic bit [UARTDataBits-1:0] test_data_tx_s, test_data_rx_s;
     automatic bit success;
 
-    baud_sel_s   = 2'b11; // 256000 Baud
+    baud_sel_s   = get_baud_bits(BaudRate);
     tx_en_s      = '0;
     tx_start_s   = '0;
     tx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);

@@ -14,6 +14,7 @@
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
 -- 2024-08-24  1.1      TZS     Added FIFO interface
+-- 2024-10-24  1.0      TZS     Removeed redundant params from Baud Gen inst
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ****/
 //! Top module for UART controller. Includes synchroniser for uart_rx_i signal.
@@ -22,7 +23,7 @@
 `timescale 1ns/1ps
 
 module uart_controller #(
-  parameter TOP_CLK_FREQ_HZ  = 50000000,                     //! Frequency of input clock in Hz
+  parameter TOP_CLK_FREQ_HZ  = 50_000_000,                   //! Frequency of input clock in Hz
   parameter MAX_UART_DATA_W  = 8,                            //! Maximum width of UART data 
   parameter STOP_CONF_W      = 2,                            //! Width of stop bit configuration field
   parameter DATA_CONF_W      = 2,                            //! Width of data bit configuration field
@@ -74,23 +75,18 @@ module uart_controller #(
   /*** SIGNALS ****************************************************************/
 
   wire baud_en_s;
-  
+
   reg uart_rx_sync0_r; //! Synchroniser register 0 for incoming Rx signal 
   reg uart_rx_sync1_r; //! Synchroniser register 1 for incoming Rx signal 
   reg uart_rx_sync2_r; //! Synchroniser register 2 for incoming Rx signal 
 
   /*** INSTANTIATIONS *********************************************************/
-  
+
   baud_generator #(
-    .TOP_CLK_FREQ_HZ                ( TOP_CLK_FREQ_HZ                ),
-    .MIN_SAMPLE_FREQ_9600_BAUD_HZ   ( MIN_SAMPLE_FREQ_9600_BAUD_HZ   ),
-    .MIN_SAMPLE_FREQ_19200_BAUD_HZ  ( MIN_SAMPLE_FREQ_19200_BAUD_HZ  ),
-    .MIN_SAMPLE_FREQ_115200_BAUD_HZ ( MIN_SAMPLE_FREQ_115200_BAUD_HZ ),
-    .MIN_SAMPLE_FREQ_256000_BAUD_HZ ( MIN_SAMPLE_FREQ_256000_BAUD_HZ ),
-    .SAMPLE_COUNT_9600_BAUD         ( SAMPLE_COUNT_9600_BAUD         ),
-    .SAMPLE_COUNT_19200_BAUD        ( SAMPLE_COUNT_19200_BAUD        ),
-    .SAMPLE_COUNT_115200_BAUD       ( SAMPLE_COUNT_115200_BAUD       ),
-    .SAMPLE_COUNT_256000_BAUD       ( SAMPLE_COUNT_256000_BAUD       )
+    .SAMPLE_COUNT_9600_BAUD   ( SAMPLE_COUNT_9600_BAUD   ),
+    .SAMPLE_COUNT_19200_BAUD  ( SAMPLE_COUNT_19200_BAUD  ),
+    .SAMPLE_COUNT_115200_BAUD ( SAMPLE_COUNT_115200_BAUD ),
+    .SAMPLE_COUNT_256000_BAUD ( SAMPLE_COUNT_256000_BAUD )
   ) i_baud_generator (
     .clk_i      ( clk_i      ),
     .rst_i      ( rst_i      ),

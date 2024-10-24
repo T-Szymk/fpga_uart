@@ -13,6 +13,8 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
+-- 2024-10-24  1.0      TZS     Fixed bug in sample counter width +
+--                              removed redundant params
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 //! Baud rate generator to be used within the FPGA UART. The Baud rate can be 
@@ -27,16 +29,10 @@
 `timescale 1ns/1ps
 
 module baud_generator #(
-  //! Top clock frequency
-  parameter TOP_CLK_FREQ_HZ                = 50000000,
-  parameter MIN_SAMPLE_FREQ_9600_BAUD_HZ   =   153600,
-  parameter MIN_SAMPLE_FREQ_19200_BAUD_HZ  =   307200,
-  parameter MIN_SAMPLE_FREQ_115200_BAUD_HZ =  1843200,
-  parameter MIN_SAMPLE_FREQ_256000_BAUD_HZ =  4086000,
-  parameter SAMPLE_COUNT_9600_BAUD         =      325,
-  parameter SAMPLE_COUNT_19200_BAUD        =      162,
-  parameter SAMPLE_COUNT_115200_BAUD       =       27,
-  parameter SAMPLE_COUNT_256000_BAUD       =       12
+  parameter SAMPLE_COUNT_9600_BAUD   = 325,
+  parameter SAMPLE_COUNT_19200_BAUD  = 162,
+  parameter SAMPLE_COUNT_115200_BAUD =  27,
+  parameter SAMPLE_COUNT_256000_BAUD =  12
 ) (
   input  wire         clk_i,      //! Clock
   input  wire         rst_i,      //! Active-high synchronous reset
@@ -46,7 +42,8 @@ module baud_generator #(
 
   /*** CONSTANTS **************************************************************/
 
-  localparam SAMPLE_COUNT_WIDTH = $clog2(SAMPLE_COUNT_256000_BAUD + 1);
+  // should be width of max
+  localparam SAMPLE_COUNT_WIDTH = $clog2(SAMPLE_COUNT_9600_BAUD + 1);
 
   /*** SIGNALS ****************************************************************/
 
@@ -55,8 +52,8 @@ module baud_generator #(
   //! Indicates baud rate select has been updated
   reg select_update_s = 1'b0;
   //! Baud rate select register to detect value update
-  reg [                 2-1:0] baud_sel_r; 
-  //! Register holding maximum value of sample counter 
+  reg [                 2-1:0] baud_sel_r;
+  //! Register holding maximum value of sample counter
   reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_max_s;
   //! Sample counter register
   reg [SAMPLE_COUNT_WIDTH-1:0] sample_count_r;
@@ -64,34 +61,34 @@ module baud_generator #(
   /*** RTL ********************************************************************/
 
   assign baud_en_o = baud_en_r;
-  
-  //! Sample counter logic 
+
+  //! Sample counter logic
   always @(posedge clk_i) begin : sync_sample_count
 
-    if ( rst_i ) begin 
-      
+    if ( rst_i ) begin
+
       sample_count_r <= 0;
       baud_en_r      <= 1'b0;
 
-    end else begin 
-      
-      if ( (sample_count_r == ( sample_count_max_s - 1)) || select_update_s ) begin 
+    end else begin
+
+      if ( (sample_count_r == ( sample_count_max_s - 1)) || select_update_s ) begin
         sample_count_r <= 0;
         baud_en_r      <= 1'b1;
       end else begin 
         sample_count_r <= sample_count_r + 1;
         baud_en_r      <= 1'b0;
-      end 
+      end
 
     end
   end
-  
+
   //! Assigns baud_sel into a register to determine if baud_sel has been updated
   always @(posedge clk_i) begin : sync_baud_sel
-  
-    if ( rst_i ) begin 
+
+    if ( rst_i ) begin
       baud_sel_r <= 0;
-    end else begin 
+    end else begin
       baud_sel_r <= baud_sel_i;
     end
 
