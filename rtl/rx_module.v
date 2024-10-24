@@ -13,6 +13,7 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
+-- 2024-10-24  1.1      TZS     Add control logic for FIFO mode
 ------------------------------------------------------------------------------*/
 /***  DESCRIPTION ***/
 //! Module to perform receipt of UART data from the uart_rx_i port.
@@ -281,20 +282,23 @@ module rx_module #(
       busy_r         <= 1'b0;
       rx_done_r      <= 1'b0;
       load_rx_conf_r <= 1'b0;
-    end else if (baud_en_i) begin
+    end else begin
 
       rx_done_r      <= 1'b0;
       load_rx_conf_r <= 1'b0;
 
-      if (n_state_s == RecvStart) begin
-        busy_r    <= 1'b1;
-      end else if (n_state_s == Done) begin
-        busy_r    <= 1'b0;
-        rx_done_r <= 1'b1; // rx_done high for 1 clk period
-      end
-      // load configuration data whenever moving into or staying in idle
-      if (n_state_s == Idle) begin
-        load_rx_conf_r <= 1'b1;
+      if ( baud_en_i ) begin
+
+        if ( n_state_s == RecvStart ) begin
+          busy_r    <= 1'b1;
+        end else if ( n_state_s == Done ) begin
+          busy_r    <= 1'b0;
+          rx_done_r <= 1'b1; // rx_done high for 1 cycle
+        end
+        // load configuration data whenever moving receive start or staying in idle
+        if (c_state_r == Idle && n_state_s == RecvStart ) begin
+          load_rx_conf_r <= 1'b1;
+        end
       end
     end
 

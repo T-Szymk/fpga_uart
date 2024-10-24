@@ -253,7 +253,7 @@ module tx_module #(
           busy_r <= 1'b1;
         end else if ( n_state_s == Done ) begin
           busy_r    <= 1'b0;
-          tx_done_r <= 1'b1;
+          tx_done_r <= 1'b1; // tx_done high for 1 cycle
         end
 
         if ( c_state_r == Idle && n_state_s == SendStart ) begin
@@ -264,12 +264,9 @@ module tx_module #(
           if ( tx_fifo_en_i ) begin
             tx_fifo_pop_r <= 1'b1;
           end
-
         end
-
       end
     end
-
   end // sync_busy_done
 
   /*** Load configuration ***/

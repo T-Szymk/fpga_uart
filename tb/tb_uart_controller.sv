@@ -156,9 +156,17 @@ module tb_uart_controller;
     rx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
     rx_fifo_en_s = '0;
 
-    while (~tb_rst) begin
+    $display("[TB %0t] UART TX: TX DATA: 0x%0H", $time, tx_data_s);
+    $display("[TB %0t] UART CONFIG:", $time);
+    $display("\tUART DATA BITS: %0d", $time, UARTDataBits);
+    $display("\tUART STOP BITS: %0d", $time, UARTStopBits);
+    $display("\tUART PARITY EN: %0d", $time, UARTParityEn);
+
+    while (tb_rst) begin
       @(posedge tb_clk);
     end
+
+    $display("[TB %0t] reset de-asserted", $time);
 
     @(posedge tb_clk);
     @(posedge tb_clk);
@@ -167,36 +175,75 @@ module tb_uart_controller;
     tx_en_s = 1'b1;
     rx_en_s = 1'b1;
 
-    @(negedge tb_clk);
-    @(negedge tb_clk);
-    @(negedge tb_clk);
-
-    tx_start_s = 1'b1;
-
-    while (~tx_done_s) begin
-      @(negedge tb_clk);
-    end
-
-    tx_start_s = 1'b0;
-    
-    while (tx_done_s) begin
-      @(negedge tb_clk);
-    end
+    $display("[TB %0t] tx and rx modules enabled", $time);
 
     @(negedge tb_clk);
+    @(negedge tb_clk);
+    @(negedge tb_clk);
 
-    tx_data_s  = 'hAA;
-    tx_start_s = 1'b1;
+    fork
 
-    while (tx_done_s) begin
-      @(negedge tb_clk);
-    end
+      begin
 
-    while (~tx_done_s) begin
-      @(negedge tb_clk);
-    end
+        tx_start_s = 1'b1;
 
-    tx_start_s = 1'b0;
+        $display("[TB %0t] UART TX: set tx_start signal", $time);
+
+        while (~tx_done_s) begin
+          @(negedge tb_clk);
+        end
+
+        $display("[TB %0t] UART TX: tx done received", $time);
+
+        tx_start_s = 1'b0;
+
+        $display("[TB %0t] UART TX: clearing tx_start signal", $time);
+
+        @(negedge tb_clk);
+
+        tx_data_s  = 'hAA;
+        tx_start_s = 1'b1;
+
+        $display("[TB %0t] UART TX: TX DATA: 0x%0H", $time, tx_data_s);
+        $display("[TB %0t] UART TX: set tx_start signal", $time);
+
+        while (~tx_done_s) begin
+          @(negedge tb_clk);
+        end
+
+        $display("[TB %0t] UART TX: tx done received", $time);
+
+        tx_start_s = 1'b0;
+
+        $display("[TB %0t] UART TX: clearing tx_start signal", $time);
+
+      end
+
+      begin
+
+        $display("[TB %0t] UART RX: Waiting for rx_done...", $time);
+
+        while (~rx_done_s) begin
+          @(negedge tb_clk);
+        end
+
+        $display("[TB %0t] UART RX: rx done received", $time);
+        $display("[TB %0t] UART RX: RX DATA: 0x%0H", $time, rx_data_s);
+
+        @(negedge tb_clk);
+
+        $display("[TB %0t] UART RX: Waiting for rx_done...", $time);
+
+        while (~rx_done_s) begin
+          @(negedge tb_clk);
+        end
+
+        $display("[TB %0t] UART RX: rx done received", $time);
+        $display("[TB %0t] UART RX: RX DATA: 0x%0H", $time, rx_data_s);
+
+      end
+
+    join
 
     forever begin
       @(posedge tb_clk);
