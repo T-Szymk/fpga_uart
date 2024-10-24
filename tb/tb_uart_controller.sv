@@ -76,6 +76,9 @@ module tb_uart_controller;
   bit [MAX_UART_DATA_W-1:0] rx_data_s;
   bit                       rx_fifo_push_s;
 
+  // FIFO to contain test data
+  mailbox #(bit [UARTDataBits-1:0]) data_queue = new();
+
   // continuous assignments
 
   assign uart_rx_s = uart_tx_s; // loopback
@@ -146,17 +149,19 @@ module tb_uart_controller;
   // TB logic
   initial begin
 
+    automatic bit [UARTDataBits-1:0] test_data_tx_s, test_data_rx_s;
+    automatic bit success;
+
     baud_sel_s   = 2'b11; // 256000 Baud
     tx_en_s      = '0;
     tx_start_s   = '0;
     tx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
-    tx_data_s    = 'h55;
+    tx_data_s    = '0;
     tx_fifo_en_s = 1'b1;
     rx_en_s      = '0;
     rx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
     rx_fifo_en_s = '0;
 
-    $display("[TB %0t] UART TX: TX DATA: 0x%0H", $time, tx_data_s);
     $display("[TB %0t] UART CONFIG:", $time);
     $display("\tUART DATA BITS: %0d", $time, UARTDataBits);
     $display("\tUART STOP BITS: %0d", $time, UARTStopBits);
@@ -185,69 +190,50 @@ module tb_uart_controller;
 
       begin
 
-        tx_start_s = 1'b1;
+        forever begin
 
-        $display("[TB %0t] UART TX: set tx_start signal", $time);
+          // generate random data value and push it into queue
+          success = std::randomize(test_data_tx_s);
+          data_queue.put(test_data_tx_s);
+          tx_data_s = test_data_tx_s;
 
-        while (~tx_done_s) begin
+          // send data
+          tx_start_s = 1'b1;
+
+          while (~tx_done_s) begin
+            @(negedge tb_clk);
+          end
+
+          tx_start_s = 1'b0;
+
           @(negedge tb_clk);
+
         end
-
-        $display("[TB %0t] UART TX: tx done received", $time);
-
-        tx_start_s = 1'b0;
-
-        $display("[TB %0t] UART TX: clearing tx_start signal", $time);
-
-        @(negedge tb_clk);
-
-        tx_data_s  = 'hAA;
-        tx_start_s = 1'b1;
-
-        $display("[TB %0t] UART TX: TX DATA: 0x%0H", $time, tx_data_s);
-        $display("[TB %0t] UART TX: set tx_start signal", $time);
-
-        while (~tx_done_s) begin
-          @(negedge tb_clk);
-        end
-
-        $display("[TB %0t] UART TX: tx done received", $time);
-
-        tx_start_s = 1'b0;
-
-        $display("[TB %0t] UART TX: clearing tx_start signal", $time);
-
       end
 
       begin
 
-        $display("[TB %0t] UART RX: Waiting for rx_done...", $time);
+        forever begin
 
-        while (~rx_done_s) begin
+          // wait for data
+          while (~rx_done_s) begin
+            @(negedge tb_clk);
+          end
+
+          // check data against expected value
+          data_queue.get(test_data_rx_s);
+          a_result_checker : assert (test_data_rx_s == rx_data_s) else begin
+            $error("[TB %0t] Result Checker Failed!", $time);
+            $display("\tUART RX: RX DATA  : 0x%0H", rx_data_s);
+            $display("\tUART RX: Expected : 0x%0H", test_data_rx_s);
+          end
+
           @(negedge tb_clk);
+
         end
-
-        $display("[TB %0t] UART RX: rx done received", $time);
-        $display("[TB %0t] UART RX: RX DATA: 0x%0H", $time, rx_data_s);
-
-        @(negedge tb_clk);
-
-        $display("[TB %0t] UART RX: Waiting for rx_done...", $time);
-
-        while (~rx_done_s) begin
-          @(negedge tb_clk);
-        end
-
-        $display("[TB %0t] UART RX: rx done received", $time);
-        $display("[TB %0t] UART RX: RX DATA: 0x%0H", $time, rx_data_s);
-
       end
 
     join
-
-    forever begin
-      @(posedge tb_clk);
-    end
 
     $display("[TB %0t] Test logic complete", $time);
     $finish;

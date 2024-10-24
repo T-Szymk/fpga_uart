@@ -74,11 +74,13 @@ module tb_fifo;
   // tb logic
   initial begin
 
+    automatic bit success;
+
     $display("FIFO TB, DEPTH = %0d, WIDTH = %0d", FIFO_DEPTH, FIFO_WIDTH);
 
-    tb_push = 1'b0;  
-    tb_pop  = 1'b0; 
-    std::randomize(tb_data_in);
+    tb_push = 1'b0;
+    tb_pop  = 1'b0;
+    success = std::randomize(tb_data_in);
 
     @(negedge tb_rst);
 
@@ -87,7 +89,7 @@ module tb_fifo;
 
     while(!tb_full) begin
       tb_push = 1'b1;
-      std::randomize(tb_data_in);
+      success = std::randomize(tb_data_in);
       $display("%0tns - Pushed %04H", $time, tb_data_in);
       @(negedge tb_clk);
     end
