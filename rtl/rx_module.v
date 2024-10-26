@@ -13,7 +13,7 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
--- 2024-10-24  1.1      TZS     Add control logic for FIFO mode
+-- 2024-10-26  1.1      TZS     Add control logic for FIFO mode
 ------------------------------------------------------------------------------*/
 /***  DESCRIPTION ***/
 //! Module to perform receipt of UART data from the uart_rx_i port.
@@ -36,24 +36,27 @@ module rx_module #(
   parameter DATA_COUNTER_W  = 3 
 ) (
 
-  input  wire                       clk_i,     //! Top clock  
-  input  wire                       rst_i,     //! Synchronous active-high reset   
-  input  wire                       baud_en_i, //! Baud rate select signal     
-  input  wire                       rx_en_i,   //! Enable for Rx module      
-  input  wire                       uart_rx_i, //! Synchronised external Rx input of UART           
-  input  wire [   TOTAL_CONF_W-1:0] rx_conf_i, //! Rx configuration data conf {data[1:0], stop[1:0], parity_en}         
+  input  wire                       clk_i,           //! Top clock
+  input  wire                       rst_i,           //! Synchronous active-high reset
+  input  wire                       baud_en_i,       //! Baud rate select signal
+  input  wire                       rx_en_i,         //! Enable for Rx module
+  input  wire                       uart_rx_i,       //! Synchronised external Rx input of UART
+  input  wire [   TOTAL_CONF_W-1:0] rx_conf_i,       //! Rx configuration data conf {data[1:0], stop[1:0], parity_en}
+  input  wire                       rx_fifo_en_i,    //! Enable for the Rx FIFO
+  input  wire                       rx_fifo_full_i,  //! Rx FIFO full indication
 
-  output wire                       rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)  
-  output wire                       rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something   
+  output wire                       rx_done_o,       //! Rx done status signal (pulsed when Rx of one character completed)
+  output wire                       rx_busy_o,       //! Rx status signal to indicate Rx module is busy receiving something
   output wire                       rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
   output wire                       rx_stop_err_o,   //! Rx status signal to indicate that a stop error was recognised in latest received data
-  output wire [MAX_UART_DATA_W-1:0] rx_data_o        //! Rx data that has been received
+  output wire [MAX_UART_DATA_W-1:0] rx_data_o,       //! Rx data that has been received
+  output wire                       rx_fifo_push_o   //! Push controls for Rx FIFO
 );
 
 /*** CONSTANTS ****************************************************************/
 
   //! Rx fsm states
-  localparam reg [3-1:0] 
+  localparam reg [3-1:0]
     Reset      = 3'b000,
     Idle       = 3'b001,
     RecvStart  = 3'b010,
@@ -82,6 +85,7 @@ module rx_module #(
   reg rx_done_r      = 1'b0;
   reg parity_error_r = 1'b0;
   reg stop_error_r   = 1'b0;
+  reg rx_fifo_push_r = 1'b0;
 
   reg [              3-1:0] c_state_r          = {3{1'b0}}; 
   reg [              3-1:0] n_state_s          = {3{1'b0}};
@@ -106,6 +110,7 @@ module rx_module #(
   assign rx_parity_err_o    = parity_error_r;
   assign rx_stop_err_o      = stop_error_r;
   assign rx_data_o          = rx_data_r;
+  assign rx_fifo_push_o     = rx_fifo_push_r;
 
   /*** FSM ***/
 
@@ -148,6 +153,7 @@ module rx_module #(
           end else begin 
             n_state_s = Idle;
           end
+
         end
       end
 
@@ -190,7 +196,7 @@ module rx_module #(
 
   /*** Bit Counters + Data capture + Parity ***/
 
-  //! Synch capturing of Rx data                               
+  //! Synch capturing of Rx data
   always @(posedge clk_i) begin : sync_data_capture
 
     if (rst_i) begin
@@ -282,10 +288,12 @@ module rx_module #(
       busy_r         <= 1'b0;
       rx_done_r      <= 1'b0;
       load_rx_conf_r <= 1'b0;
+      rx_fifo_push_r <= 1'b0;
     end else begin
 
       rx_done_r      <= 1'b0;
       load_rx_conf_r <= 1'b0;
+      rx_fifo_push_r <= 1'b0;
 
       if ( baud_en_i ) begin
 
@@ -295,9 +303,20 @@ module rx_module #(
           busy_r    <= 1'b0;
           rx_done_r <= 1'b1; // rx_done high for 1 cycle
         end
-        // load configuration data whenever moving receive start or staying in idle
-        if (c_state_r == Idle && n_state_s == RecvStart ) begin
+
+        // load configuration data whenever moving receive start
+        if ( c_state_r == Idle && n_state_s == RecvStart ) begin
           load_rx_conf_r <= 1'b1;
+        end
+
+        // only push to FIFO when stop has been received and FIFO has been
+        // enabled/has room. Note that the data is still read from the line when
+        // the FIFO is full, because it is possible to read out of the FIFO mid- 
+        // way through receiving data
+        if ( c_state_r == RecvStop && n_state_s == Done ) begin
+          if ( ~rx_fifo_full_i  && rx_fifo_en_i ) begin
+            rx_fifo_push_r <= 1'b1;
+          end
         end
       end
     end

@@ -12,7 +12,7 @@
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
--- 2024-10-24  1.0      TZS     Created
+-- 2024-10-26  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 /*
@@ -76,6 +76,7 @@ module tb_uart_controller;
   bit                       rx_busy_s;
   bit [MAX_UART_DATA_W-1:0] rx_data_s;
   bit                       rx_fifo_push_s;
+  bit                       rx_fifo_full_s;
 
   // FIFO to contain test data
   mailbox #(bit [UARTDataBits-1:0]) data_queue = new();
@@ -135,6 +136,7 @@ module tb_uart_controller;
     .uart_rx_i        ( uart_rx_s       ),
     .rx_conf_i        ( rx_conf_s       ),
     .rx_fifo_en_i     ( rx_fifo_en_s    ),
+    .rx_fifo_full_i   ( rx_fifo_full_s  ),
     .tx_done_o        ( tx_done_s       ),
     .tx_busy_o        ( tx_busy_s       ),
     .uart_tx_o        ( uart_tx_s       ),
@@ -153,15 +155,16 @@ module tb_uart_controller;
     automatic bit [UARTDataBits-1:0] test_data_tx_s, test_data_rx_s;
     automatic bit success;
 
-    baud_sel_s   = get_baud_bits(BaudRate);
-    tx_en_s      = '0;
-    tx_start_s   = '0;
-    tx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
-    tx_data_s    = '0;
-    tx_fifo_en_s = 1'b1;
-    rx_en_s      = '0;
-    rx_conf_s    = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
-    rx_fifo_en_s = '0;
+    baud_sel_s     = get_baud_bits(BaudRate);
+    tx_en_s        = '0;
+    tx_start_s     = '0;
+    tx_conf_s      = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
+    tx_data_s      = '0;
+    tx_fifo_en_s   = 1'b1;
+    rx_en_s        = '0;
+    rx_conf_s      = get_uart_config(UARTDataBits, UARTStopBits, UARTParityEn);
+    rx_fifo_en_s   = 1'b1;
+    rx_fifo_full_s = 1'b0;
 
     $display("[TB %0t] UART CONFIG:", $time);
     $display("\tUART DATA BITS: %0d", $time, UARTDataBits);

@@ -13,8 +13,9 @@
 -- Revisions:
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
--- 2024-08-24  1.1      TZS     Added FIFO interface
--- 2024-10-24  1.0      TZS     Removeed redundant params from Baud Gen inst
+-- 2024-08-24  1.1      TZS     Added Tx FIFO interface
+-- 2024-10-24  1.2      TZS     Removeed redundant params from Baud Gen inst
+-- 2024-10-26  1.3      TZS     Add Rx FIFO interface
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ****/
 //! Top module for UART controller. Includes synchroniser for uart_rx_i signal.
@@ -45,6 +46,7 @@ module uart_controller #(
   input  wire                       uart_rx_i,       //! External Rx input of UART
   input  wire [   TOTAL_CONF_W-1:0] rx_conf_i,       //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
   input  wire                       rx_fifo_en_i,    //! Enable for the Rx FIFO
+  input  wire                       rx_fifo_full_i,  //! Full indication from Rx FIFO
 
   output wire                       tx_done_o,       //! Tx done status signal (pulsed when Tx of one character completed)   
   output wire                       tx_busy_o,       //! Tx status signal to indicate Tx module is busy sending something    
@@ -130,11 +132,14 @@ module uart_controller #(
     .rx_en_i         ( rx_en_i         ),
     .uart_rx_i       ( uart_rx_sync2_r ),
     .rx_conf_i       ( rx_conf_i       ),
+    .rx_fifo_en_i    ( rx_fifo_en_i    ),
+    .rx_fifo_full_i  ( rx_fifo_full_i  ),
     .rx_done_o       ( rx_done_o       ),
     .rx_busy_o       ( rx_busy_o       ),
     .rx_parity_err_o ( rx_parity_err_o ),
     .rx_stop_err_o   ( rx_stop_err_o   ),
-    .rx_data_o       ( rx_data_o       )
+    .rx_data_o       ( rx_data_o       ),
+    .rx_fifo_push_o  ( rx_fifo_push_o  )
   );
 
   /* RTL **********************************************************************/
