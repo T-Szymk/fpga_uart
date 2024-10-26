@@ -22,7 +22,7 @@
 `timescale 1ns/1ps
 
 module rx_module #(
-  //! Maximum width of UART data 
+  //! Maximum width of UART data
   parameter MAX_UART_DATA_W = 8,
   //! Width of stop bit configuration field
   parameter STOP_CONF_W     = 2,
@@ -88,7 +88,7 @@ module rx_module #(
   reg stop_error_r   = 1'b0;
   reg rx_fifo_push_r = 1'b0;
 
-  reg [              3-1:0] c_state_r          = {3{1'b0}}; 
+  reg [              3-1:0] c_state_r          = {3{1'b0}};
   reg [              3-1:0] n_state_s          = {3{1'b0}};
   reg [ DATA_COUNTER_W-1:0] data_counter_r     = {DATA_COUNTER_W{1'b0}};
   reg [    STOP_CONF_W-1:0] stop_counter_r     = {STOP_CONF_W{1'b0}};
