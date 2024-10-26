@@ -47,6 +47,7 @@ module tx_module #(
   output wire                       tx_done_o,    //! Tx done status signal (pulsed when Tx of one character completed) 
   output wire                       tx_busy_o,    //! Tx status signal to indicate Tx module is busy sending something  
   output wire                       uart_tx_o,    //! External Tx output of UART
+  // ToDo: Move FIFO controls into UART controller module
   output wire                       tx_fifo_pop_o //! Pop control for Tx FIFO
 );
 

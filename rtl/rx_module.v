@@ -50,6 +50,7 @@ module rx_module #(
   output wire                       rx_parity_err_o, //! Rx status signal indicating that a parity error was recognised in latest received data
   output wire                       rx_stop_err_o,   //! Rx status signal to indicate that a stop error was recognised in latest received data
   output wire [MAX_UART_DATA_W-1:0] rx_data_o,       //! Rx data that has been received
+  // ToDo: Move FIFO controls into UART controller module
   output wire                       rx_fifo_push_o   //! Push controls for Rx FIFO
 );
 
