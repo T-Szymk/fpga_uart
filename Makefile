@@ -35,6 +35,8 @@ RTL_FILES ?= \
   $(RTL_DIR)/tx_module.v \
   $(RTL_DIR)/uart_controller.v \
 	$(RTL_DIR)/bram.v \
+	$(RTL_DIR)/register.v \
+	$(RTL_DIR)/uart_registers.v \
   $(RTL_DIR)/fifo.v
 
 TB_FILES  ?= \

@@ -3,4 +3,6 @@
 ./rtl/tx_module.v
 ./rtl/uart_controller.v
 ./rtl/bram.v
+./rtl/register.v
+./rtl/uart_registers.v
 ./rtl/fifo.v
