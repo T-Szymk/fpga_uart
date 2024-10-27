@@ -1,12 +1,12 @@
 /*------------------------------------------------------------------------------
--- Title      : FPGA UART Registers
+-- Title      : FPGA UART Register
 -- Project    : FPGA UART
 --------------------------------------------------------------------------------
 -- File       : registers.v
 -- Author(s)  : Thomas Szymkowiak
 -- Company    : TUNI
 -- Created    : 2024-10-26
--- Design     : registers
+-- Design     : register
 -- Platform   : -
 -- Standard   : Verilog '05
 --------------------------------------------------------------------------------
@@ -18,9 +18,11 @@
 //! Definition of parameterisable registers for use within the FPGA UART
 /*----------------------------------------------------------------------------*/
 
-module registers #(
-  parameter REG_WIDTH = 32,
-  parameter READ_CLEAR = 0
+module register #(
+  parameter integer         REG_WIDTH          = 32,
+  parameter integer         READ_CLEAR         =  0,
+  parameter [REG_WIDTH-1:0] READ_WRITE_PATTERN = {REG_WIDTH{1'b0}},
+  parameter [REG_WIDTH-1:0] READ_CLEAR_PATTERN = {REG_WIDTH{1'b0}}
 ) (
   input  wire                 clk_i,
   input  wire                 rst_i,
@@ -57,14 +59,20 @@ module registers #(
 
           // prioritise writes from CPU side
           if (wr_en_cpu_i) begin
+
             data_r    <= data_cpu_i;
             updated_r <= 1'b1;
+
           end else if (wr_en_periph_i) begin
+
             data_r    <= data_periph_i;
             updated_r <= 1'b1;
+
           // if data is read, clear contents
           end else if (rd_en_cpu_i) begin
-            data_r   <= {REG_WIDTH{1'b0}};
+
+            data_r <= {REG_WIDTH{1'b0}};
+
           end
 
         end
@@ -85,8 +93,10 @@ module registers #(
 
           // prioritise writes from CPU side
           if (wr_en_cpu_i) begin
+
             data_r    <= data_cpu_i;
             updated_r <= 1'b1;
+
           end else if (wr_en_periph_i) begin
             data_r    <= data_periph_i;
             updated_r <= 1'b1;
