@@ -18,6 +18,8 @@
 //! Definition of parameterisable registers for use within the FPGA UART
 /*----------------------------------------------------------------------------*/
 
+`timescale 1ns/1ps
+
 module register #(
   parameter integer         REG_WIDTH          = 32,
   parameter [REG_WIDTH-1:0] READ_WRITE_PATTERN = {REG_WIDTH{1'b0}},
@@ -56,13 +58,13 @@ module register #(
           if (wr_en_cpu_i) begin
 
             // only write if bit is R/W
-            if (READ_CLEAR_PATTERN[bit_idx]) begin
+            if (READ_WRITE_PATTERN[bit_idx]) begin
               data_r[bit_idx] <= data_cpu_i[bit_idx];
             end
 
           end else if (wr_en_periph_i) begin
 
-            if (READ_CLEAR_PATTERN[bit_idx]) begin
+            if (READ_WRITE_PATTERN[bit_idx]) begin
               data_r[bit_idx] <= data_periph_i[bit_idx];
             end
 

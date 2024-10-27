@@ -18,6 +18,8 @@
 //! Definition of parameterisable registers for use within the FPGA UART
 /*----------------------------------------------------------------------------*/
 
+`timescale 1ns/1ps
+
 module uart_registers #(
   parameter integer ADDR_WIDTH =  2,
   parameter integer DATA_WIDTH = 32,
@@ -33,7 +35,8 @@ module uart_registers #(
   input  wire                                wr_en_cpu_i,    //! Write enable from CPU
   input  wire                                rd_en_cpu_i,    //! Read enable from CPU
 
-  output wire [(REG_COUNT * DATA_WIDTH)-1:0] data_o          //! Output data from registers
+  output wire [              DATA_WIDTH-1:0] cpu_data_o,     //! Output data to CPU
+  output wire [(REG_COUNT * DATA_WIDTH)-1:0] periph_data_o   //! Output data from registers to peripherals
 );
 
   // contstants
@@ -76,14 +79,16 @@ module uart_registers #(
   reg [REG_WIDTH-1:0] ctrl_reg_data_o_s;
   reg [REG_WIDTH-1:0] tx_reg_data_o_s;
   reg [REG_WIDTH-1:0] rx_reg_data_o_s;
+  reg [REG_WIDTH-1:0] cpu_data_o_s;
 
   // assignments
 
   // concat all output data for extensibility
-  assign data_o = {rx_reg_data_o_s,
-                   tx_reg_data_o_s,
-                   ctrl_reg_data_o_s,
-                   stat_reg_data_o_s};
+  assign periph_data_o = {rx_reg_data_o_s,
+                          tx_reg_data_o_s,
+                          ctrl_reg_data_o_s,
+                          stat_reg_data_o_s};
+  assign cpu_data_o    = cpu_data_o_s;
 
   // split data from peripherals
   assign stat_reg_data_periph_i_s =
@@ -118,6 +123,7 @@ module uart_registers #(
     rx_reg_wr_en_cpu_s    = 1'b0;
     rx_reg_rd_en_cpu_s    = 1'b0;
     rx_reg_data_cpu_i_s   = {DATA_WIDTH{1'b0}};
+    cpu_data_o_s          = {DATA_WIDTH{1'b0}};
 
     case (cpu_addr_i)
 
@@ -125,24 +131,28 @@ module uart_registers #(
         stat_reg_wr_en_cpu_s  = wr_en_cpu_i;
         stat_reg_rd_en_cpu_s  = rd_en_cpu_i;
         stat_reg_data_cpu_i_s = cpu_data_i;
+        cpu_data_o_s          = stat_reg_data_o_s;
       end
 
       UART_CTRL_ADDR : begin
         ctrl_reg_wr_en_cpu_s  = wr_en_cpu_i;
         ctrl_reg_rd_en_cpu_s  = rd_en_cpu_i;
         ctrl_reg_data_cpu_i_s = cpu_data_i;
+        cpu_data_o_s          = ctrl_reg_data_o_s;
       end
 
       UART_TX_ADDR : begin
         tx_reg_wr_en_cpu_s    = wr_en_cpu_i;
         tx_reg_rd_en_cpu_s    = rd_en_cpu_i;
         tx_reg_data_cpu_i_s   = cpu_data_i;
+        cpu_data_o_s          = tx_reg_data_o_s;
       end
 
       UART_RX_ADDR : begin
         rx_reg_wr_en_cpu_s    = wr_en_cpu_i;
         rx_reg_rd_en_cpu_s    = rd_en_cpu_i;
         rx_reg_data_cpu_i_s   = cpu_data_i;
+        cpu_data_o_s          = rx_reg_data_o_s;
       end
 
       default : begin
@@ -158,6 +168,7 @@ module uart_registers #(
         rx_reg_wr_en_cpu_s    = 1'b0;
         rx_reg_rd_en_cpu_s    = 1'b0;
         rx_reg_data_cpu_i_s   = {DATA_WIDTH{1'b0}};
+        cpu_data_o_s          = {DATA_WIDTH{1'b0}};
       end
     endcase
 

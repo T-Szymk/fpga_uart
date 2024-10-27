@@ -151,7 +151,7 @@ module rx_module #(
              if not, assume glitch and return to idle */
           if (~start_r) begin
             n_state_s = RecvData;
-          end else begin 
+          end else begin
             n_state_s = Idle;
           end
 
@@ -326,7 +326,7 @@ module rx_module #(
 
   /*** Load configuration ***/
 
-  //! Synch latching of configuration inputs 
+  //! Synch latching of configuration inputs
   always @(posedge clk_i) begin : sync_rx_conf_load
 
     if (rst_i) begin
