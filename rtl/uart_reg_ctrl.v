@@ -64,4 +64,29 @@ module uart_reg_ctrl #(
   output wire                       rx_fifo_en_o            //! Enable for the Rx FIFO
 );
 
+  // constants
+  localparam integer RegBusAddrWidth =  2;
+  localparam integer RegBusDataWidth = 32;
+  localparam integer RegWidth        = 32;
+  localparam integer RegCount        =  4;
+
+  // UART Register Component
+  uart_registers #(
+    .ADDR_WIDTH ( RegBusAddrWidth ),
+    .DATA_WIDTH ( RegBusDataWidth ),
+    .REG_WIDTH  ( RegWidth        ),
+    .REG_COUNT  ( RegCount        )
+  ) i_uart_registers (
+    .clk_i          ( clk_i                              ),
+    .rst_i          ( rst_i                              ),
+    .cpu_addr_i     ( {RegBusAddrWidth{1'b0}}            ),
+    .cpu_data_i     ( {RegBusDataWidth{1'b0}}            ),
+    .periph_data_i  ( {(RegCount*RegBusDataWidth){1'b0}} ),
+    .wr_en_periph_i ( {RegCount{1'b0}}                   ),
+    .wr_en_cpu_i    ( 1'b0                               ),
+    .rd_en_cpu_i    ( 1'b0                               ),
+    .cpu_data_o     ( /*NOT CONNECTED*/                  ),
+    .periph_data_o  ( /*NOT CONNECTED*/                  )
+  );
+
 endmodule
