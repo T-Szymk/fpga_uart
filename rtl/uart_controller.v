@@ -18,7 +18,8 @@
 -- 2024-10-26  1.3      TZS     Add Rx FIFO interface
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ****/
-//! Top module for UART controller. Includes synchroniser for uart_rx_i signal.
+//! UART controller containing Tx/Rx controllers and Baud Generator.
+//! Includes synchroniser for uart_rx_i signal.
 /*----------------------------------------------------------------------------*/
 
 `timescale 1ns/1ps

@@ -21,10 +21,10 @@
 `timescale 1ns/1ps
 
 module uart_registers #(
-  parameter integer ADDR_WIDTH =  2,
-  parameter integer DATA_WIDTH = 32,
-  parameter integer REG_WIDTH  = 32,
-  parameter integer REG_COUNT  =  4
+  parameter ADDR_WIDTH =  2,
+  parameter DATA_WIDTH = 32,
+  parameter REG_WIDTH  = 32,
+  parameter REG_COUNT  =  4
 ) (
   input  wire                                clk_i,          //! Clock
   input  wire                                rst_i,          //! Sync active-high reset

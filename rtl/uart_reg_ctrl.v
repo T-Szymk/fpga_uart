@@ -21,19 +21,20 @@
 //! Above this module and wen/ren/data_i/data_o signals should be driven by said
 //! bus controller.
 // ToDo: Create header defining register IDs and bit fields
+// ToDo: Add FIFO controls
 /*----------------------------------------------------------------------------*/
 
 `timescale 1ns/1ps
 
 module uart_reg_ctrl #(
-  parameter integer MAX_UART_DATA_W  = 8,                             //! Maximum width of UART data 
-  parameter integer STOP_CONF_W      = 2,                             //! Width of stop bit configuration field
-  parameter integer DATA_CONF_W      = 2,                             //! Width of data bit configuration field
-  parameter integer BAUD_RATE_SEL_W  = 2,                             //! Width of Baud rate select signal = $clog2(N_BAUD_RATE_VALS)
-  parameter integer TOTAL_CONF_W     = STOP_CONF_W + DATA_CONF_W + 1, //! Total width of configuration data bits sent to Tx and Rx modules
-  parameter integer CPU_ADDR_WIDTH   =  2,                            //! Width of CPU address bus
-  parameter integer CPU_DATA_WIDTH   = 32                             //! Width of CPU data bus
-  ) (
+  parameter MAX_UART_DATA_W  = 8,                             //! Maximum width of UART data 
+  parameter STOP_CONF_W      = 2,                             //! Width of stop bit configuration field
+  parameter DATA_CONF_W      = 2,                             //! Width of data bit configuration field
+  parameter BAUD_RATE_SEL_W  = 2,                             //! Width of Baud rate select signal = $clog2(N_BAUD_RATE_VALS)
+  parameter TOTAL_CONF_W     = STOP_CONF_W + DATA_CONF_W + 1, //! Total width of configuration data bits sent to Tx and Rx modules
+  parameter CPU_ADDR_WIDTH   =  2,                            //! Width of CPU address bus
+  parameter CPU_DATA_WIDTH   = 32                             //! Width of CPU data bus
+) (
   input  wire                       clk_i,                  //! Top clock
   input  wire                       rst_i,                  //! Synchronous active-high reset
 

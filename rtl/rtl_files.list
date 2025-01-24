@@ -7,3 +7,4 @@
 ./rtl/uart_registers.v
 ./rtl/uart_reg_ctrl.v
 ./rtl/fifo.v
+./rtl/uart_top.v

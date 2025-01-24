@@ -141,7 +141,7 @@ sim: compile
 .PHONY: simc
 simc: compile
 	cd $(BUILD_DIR) && \
-	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -c -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -do $(SIM_DIR)/$(DO_FILE)
+	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -c $(TOP_MODULE) -do "run -all;"
 
 
 .PHONY: clean

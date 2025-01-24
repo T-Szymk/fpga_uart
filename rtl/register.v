@@ -21,7 +21,7 @@
 `timescale 1ns/1ps
 
 module register #(
-  parameter integer         REG_WIDTH          = 32,
+  parameter                 REG_WIDTH          = 32,
   parameter [REG_WIDTH-1:0] READ_WRITE_PATTERN = {REG_WIDTH{1'b0}},
   parameter [REG_WIDTH-1:0] READ_CLEAR_PATTERN = {REG_WIDTH{1'b0}}
 ) (
