@@ -5,4 +5,5 @@
 ./rtl/bram.v
 ./rtl/register.v
 ./rtl/uart_registers.v
+./rtl/uart_reg_ctrl.v
 ./rtl/fifo.v

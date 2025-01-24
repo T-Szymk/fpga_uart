@@ -39,8 +39,8 @@ module uart_registers #(
   output wire [(REG_COUNT * DATA_WIDTH)-1:0] periph_data_o   //! Output data from registers to peripherals
 );
 
-  // contstants
-
+  // constants
+  // ToDo: Move to Header!
   localparam [ADDR_WIDTH-1:0] UART_STAT_ADDR = 0;
   localparam [ADDR_WIDTH-1:0] UART_CTRL_ADDR = 1;
   localparam [ADDR_WIDTH-1:0] UART_TX_ADDR   = 2;
@@ -193,7 +193,7 @@ module uart_registers #(
 
   register #(
     .REG_WIDTH          ( REG_WIDTH  ),
-    .READ_WRITE_PATTERN ( 32'h37D037F),
+    .READ_WRITE_PATTERN ( 32'hC37D037F),
     .READ_CLEAR_PATTERN ( 32'd0      )
   ) i_uart_control_reg (
     .clk_i          ( clk_i                    ),
