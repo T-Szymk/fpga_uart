@@ -136,7 +136,7 @@ compile: lib
 .PHONY: sim
 sim: compile
 	cd $(BUILD_DIR) && \
-	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -onfinish stop -do $(SIM_DIR)/$(DO_FILE)
+	vsim -work fpga_uart_tb_lib -L fpga_uart_rtl_lib -voptargs="+acc" -wlf $(TOP_MODULE)_waves.wlf $(TOP_MODULE) -onfinish stop -do $(SIM_DIR)/$(DO_FILE)
 
 .PHONY: simc
 simc: compile

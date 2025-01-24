@@ -61,14 +61,51 @@ module uart_reg_ctrl #(
   output wire                       tx_fifo_en_o,           //! Enable for the Tx FIFO
   output wire                       rx_en_o,                //! Enable for Rx module
   output wire [   TOTAL_CONF_W-1:0] rx_conf_o,              //! Rx configuration data conf {data[1:0], stop[1:0], parity_en} 
-  output wire                       rx_fifo_en_o            //! Enable for the Rx FIFO
+  output wire                       rx_fifo_en_o,           //! Enable for the Rx FIFO
+  output wire [MAX_UART_DATA_W-1:0] rx_data_o               //! Rx data to be read
 );
 
-  // constants
+  /* constants ************************************************************************************/
+
   localparam integer RegBusAddrWidth =  2;
   localparam integer RegBusDataWidth = 32;
   localparam integer RegWidth        = 32;
   localparam integer RegCount        =  4;
+
+  /* signals and type declarations ****************************************************************/
+
+  // grouped registers outputs
+  wire [             RegBusDataWidth-1:0] cpu_data_out_s;
+  wire [(RegCount * RegBusDataWidth)-1:0] periph_data_out_s;
+
+  // grouped registers inputs
+  wire [             RegBusDataWidth-1:0] cpu_data_in_s;
+  wire [(RegCount * RegBusDataWidth)-1:0] periph_data_in_s;
+
+  // individual register outputs
+  wire [RegWidth-1:0] stat_reg_data_o_s;
+  wire [RegWidth-1:0] ctrl_reg_data_o_s;
+  wire [RegWidth-1:0] tx_reg_data_o_s;
+  wire [RegWidth-1:0] rx_reg_data_o_s;
+
+  // individual register inputs
+  reg [RegWidth-1:0] stat_reg_data_i_s;
+  reg [RegWidth-1:0] ctrl_reg_data_i_s;
+  reg [RegWidth-1:0] tx_reg_data_i_s;
+  reg [RegWidth-1:0] rx_reg_data_i_s;
+
+  // Control register fields
+  wire [BAUD_RATE_SEL_W-1:0] baud_sel_s;
+  wire                       tx_en_s;
+  wire                       tx_start_s;
+  wire [   TOTAL_CONF_W-1:0] tx_conf_s;
+  wire                       rx_en_s;
+  wire [   TOTAL_CONF_W-1:0] rx_conf_s;
+
+  // Tx data fields
+  wire [MAX_UART_DATA_W-1:0] tx_data_s;
+
+  /* Components ***********************************************************************************/
 
   // UART Register Component
   uart_registers #(
@@ -80,13 +117,72 @@ module uart_reg_ctrl #(
     .clk_i          ( clk_i                              ),
     .rst_i          ( rst_i                              ),
     .cpu_addr_i     ( {RegBusAddrWidth{1'b0}}            ),
-    .cpu_data_i     ( {RegBusDataWidth{1'b0}}            ),
-    .periph_data_i  ( {(RegCount*RegBusDataWidth){1'b0}} ),
+    .cpu_data_i     ( cpu_data_in_s                      ),
+    .periph_data_i  ( periph_data_in_s                   ),
     .wr_en_periph_i ( {RegCount{1'b0}}                   ),
     .wr_en_cpu_i    ( 1'b0                               ),
     .rd_en_cpu_i    ( 1'b0                               ),
-    .cpu_data_o     ( /*NOT CONNECTED*/                  ),
-    .periph_data_o  ( /*NOT CONNECTED*/                  )
+    .cpu_data_o     ( cpu_data_out_s                     ),
+    .periph_data_o  ( periph_data_out_s                  )
   );
+
+  /* assignments **********************************************************************************/
+
+  // Default/Unimplemented function assignments
+  assign tx_fifo_push_o = 1'b0;
+  assign rx_fifo_pop_o  = 1'b0;
+  assign tx_fifo_en_o   = 1'b0;
+  assign rx_fifo_en_o   = 1'b0;
+
+  // INPUTS (Peripheral -> Reg)
+
+  // assign fields into reg groups
+  always @(*) begin
+
+    // default assignments
+    stat_reg_data_i_s = {RegWidth{1'b0}};
+    ctrl_reg_data_i_s = {RegWidth{1'b0}};
+    tx_reg_data_i_s   = {RegWidth{1'b0}};
+    rx_reg_data_i_s   = {RegWidth{1'b0}};
+
+    stat_reg_data_i_s[ 0] = tx_done_i;
+    stat_reg_data_i_s[ 1] = tx_busy_i;
+    stat_reg_data_i_s[ 8] = tx_fifo_empty_i;
+    stat_reg_data_i_s[ 9] = tx_fifo_nearly_empty_i;
+    stat_reg_data_i_s[10] = tx_fifo_full_i;
+    stat_reg_data_i_s[11] = tx_fifo_nearly_full_i;
+    stat_reg_data_i_s[16] = rx_done_i;
+    stat_reg_data_i_s[17] = rx_busy_i;
+    stat_reg_data_i_s[18] = rx_parity_err_i;
+    stat_reg_data_i_s[19] = rx_stop_err_i;
+    stat_reg_data_i_s[24] = rx_fifo_empty_i;
+    stat_reg_data_i_s[25] = rx_fifo_nearly_empty_i;
+    stat_reg_data_i_s[26] = rx_fifo_full_i;
+    stat_reg_data_i_s[27] = rx_fifo_nearly_full_i;
+
+    rx_reg_data_i_s[7:0] = rx_data_i;
+
+  end
+
+  // concat reg groups
+  assign periph_data_in_s = {stat_reg_data_i_s, ctrl_reg_data_i_s, 
+                             tx_reg_data_i_s, rx_reg_data_i_s};
+
+  // OUTPUTS (Reg -> Peripheral)
+
+  // separate periph group into register grouping
+  assign {rx_reg_data_o_s,   tx_reg_data_o_s,
+          ctrl_reg_data_o_s, stat_reg_data_o_s} = periph_data_out_s;
+
+  // extract fields from registers
+  // ToDo: Place field indexes into a package or header
+  assign baud_sel_o = ctrl_reg_data_o_s[31:30];
+  assign tx_en_o    = ctrl_reg_data_o_s[0];
+  assign tx_start_o = ctrl_reg_data_o_s[1];
+  assign tx_conf_o  = ctrl_reg_data_o_s[6:2];
+  assign rx_en_o    = ctrl_reg_data_o_s[16];
+  assign rx_conf_o  = ctrl_reg_data_o_s[22:18];
+  assign tx_data_o  = tx_reg_data_o_s[7:0];
+  assign rx_data_o  = rx_reg_data_o_s[7:0];
 
 endmodule
