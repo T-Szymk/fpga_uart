@@ -57,16 +57,14 @@ module register #(
           // prioritise writes from CPU side
           if (wr_en_cpu_i) begin
 
-            // only write if bit is R/W
+            // only write from CPU if bit is R/W
             if (READ_WRITE_PATTERN[bit_idx]) begin
               data_r[bit_idx] <= data_cpu_i[bit_idx];
             end
 
           end else if (wr_en_periph_i) begin
 
-            if (READ_WRITE_PATTERN[bit_idx]) begin
               data_r[bit_idx] <= data_periph_i[bit_idx];
-            end
 
           // if data is read and read clear cfg is set for bit, clear contents
           end else if (rd_en_cpu_i) begin

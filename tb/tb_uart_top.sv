@@ -43,6 +43,11 @@ module tb_uart_top;
   localparam int unsigned UartTxAddr      = 2;
   localparam int unsigned UartRxAddr      = 3;
 
+  localparam int unsigned TxDoneIdx        =  0;
+  localparam int unsigned TxBusyIdx        =  1;
+  localparam int unsigned RxDoneIdx        = 16;
+  localparam int unsigned RxBusyIdx        = 17;
+
   localparam int unsigned TxEnableIdx      =  0;
   localparam int unsigned TxStartIdx       =  1;
   localparam int unsigned TxParityIdx      =  2;
@@ -59,8 +64,10 @@ module tb_uart_top;
   localparam int unsigned RxDataWidthIdxHi = 22;
   localparam int unsigned BaudSelectIdxLo  = 30;
   localparam int unsigned BaudSelectIdxHi  = 31;
+
   localparam int unsigned TxDataIdxLo      =  0;
   localparam int unsigned TxDataIdxHi      =  8;
+
   localparam int unsigned RxDataIdxLo      =  0;
   localparam int unsigned RxDataIdxHi      =  8;
 
@@ -191,7 +198,7 @@ module tb_uart_top;
   initial begin : tb_logic
 
     automatic uart_cfg_t uart_cfg;
-    automatic int unsigned tx_data = 'hA5;
+    automatic int unsigned tx_data = 'hAA;
 
     // set initial config
     uart_cfg.tx_parity_en  = PARITY_DISABLE;
@@ -216,10 +223,13 @@ module tb_uart_top;
     enable_tx(tb_clk, wr_en_cpu, rd_en_cpu, cpu_addr, cpu_din, cpu_dout);
     enable_rx(tb_clk, wr_en_cpu, rd_en_cpu, cpu_addr, cpu_din, cpu_dout);
 
-    // Send byte
-    transmit_data_single(tx_data, tb_clk, wr_en_cpu, rd_en_cpu, cpu_addr, cpu_din, cpu_dout);
+    // send a loop of 10 values, inverting bits after each iteration
+    for (int iter = 0; iter < 5; iter++) begin
 
-    forever @(posedge tb_clk);
+      transmit_data_single(tx_data, tb_clk, wr_en_cpu, rd_en_cpu, cpu_addr, cpu_din, cpu_dout);
+
+      tx_data ^= 'hFF;
+    end
 
     // end of TB logic
     $display("[TB %0t] Test logic complete", $time);
@@ -426,8 +436,9 @@ module tb_uart_top;
     begin
 
       // truncate data
-      uart_data_t uart_data = uart_data_t'(data);
-      cpu_data_t cpu_data   = '0;
+      automatic uart_data_t uart_data = uart_data_t'(data);
+      automatic cpu_data_t  cpu_data  = '0;
+      automatic bit         tx_busy   = 1'b0;
 
       cpu_data[TxDataIdxHi:TxDataIdxLo] = uart_data;
 
@@ -440,6 +451,19 @@ module tb_uart_top;
       // write Tx En
       cpu_data[TxStartIdx] = 1'b1;
       write_data_cpu(cpu_data, UartControlAddr, clk, wr_en_cpu, cpu_addr, cpu_data_in);
+
+      // read cfg to get busy status
+      read_data_cpu(cpu_data, UartStatusAddr, clk, rd_en_cpu, cpu_addr, cpu_data_out);
+      // isolate busy flag
+      tx_busy = cpu_data[TxBusyIdx];
+
+      // wait for tx busy to clear
+      while(tx_busy) begin
+        // read cfg
+        read_data_cpu(cpu_data, UartStatusAddr, clk, rd_en_cpu, cpu_addr, cpu_data_out);
+        // isolate busy flag
+        tx_busy = cpu_data[TxBusyIdx];
+      end
 
     end
   endtask

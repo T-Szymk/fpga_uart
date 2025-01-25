@@ -296,11 +296,15 @@ module rx_module #(
       load_rx_conf_r <= 1'b0;
       rx_fifo_push_r <= 1'b0;
 
+
+      // set busy ASAP
+      if ( n_state_s == RecvStart ) begin
+        busy_r    <= 1'b1;
+      end
+
       if ( baud_en_i ) begin
 
-        if ( n_state_s == RecvStart ) begin
-          busy_r    <= 1'b1;
-        end else if ( n_state_s == Done ) begin
+        if ( n_state_s == Done ) begin
           busy_r    <= 1'b0;
           rx_done_r <= 1'b1; // rx_done high for 1 cycle
         end

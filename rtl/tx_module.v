@@ -14,6 +14,7 @@
 -- Date        Version  Author  Description
 -- 2023-07-15  1.0      TZS     Created
 -- 2024-10-22  1.1      TZS     Add control logic for FIFO mode
+-- 2025-01-25  1.2      TZS     Add edge detector to allow faster busy response
 ------------------------------------------------------------------------------*/
 /*** DESCRIPTION ***/
 //! Module to perform transmission of UART data onto the uart_tx_o port.
@@ -71,6 +72,8 @@ module tx_module #(
   wire sample_count_done_s;
   wire parity_bit_s;
 
+  wire tx_start_pedge_s;
+
   reg uart_tx_s      = 1'b0;
   reg load_tx_conf_r = 1'b0;
   reg parity_en_r    = 1'b0;
@@ -86,6 +89,18 @@ module tx_module #(
   reg [MAX_UART_DATA_W-1:0] tx_data_r          = {MAX_UART_DATA_W{1'b0}};
   reg [ DATA_COUNTER_W-1:0] data_counter_max_r = {DATA_COUNTER_W{1'b0}};
   reg [    STOP_CONF_W-1:0] stop_counter_max_r = {STOP_CONF_W{1'b0}};
+
+  /*** COMPONENTS *************************************************************/
+
+  edge_detector #(
+    .RISING_nFALLING_EDGE(1)
+  ) i_tx_start_pedge_detect (
+    .clk_i    ( clk_i            ),
+    .rst_i    ( rst_i            ),
+    .data_i   ( tx_start_i       ),
+    .edge_o   ( tx_start_pedge_s ),
+    .edge_n_o ( /*UNCONNECTED*/  )
+  );
 
   /*** RTL ********************************************************************/
 
@@ -248,11 +263,14 @@ module tx_module #(
       load_tx_conf_r <= 1'b0;
       tx_fifo_pop_r  <= 1'b0;
 
+      // set busy ASAP
+      if (tx_start_pedge_s) begin
+        busy_r <= 1'b1;
+      end
+
       if ( baud_en_i ) begin
 
-        if ( n_state_s == SendStart ) begin
-          busy_r <= 1'b1;
-        end else if ( n_state_s == Done ) begin
+        if ( c_state_r == Done ) begin
           busy_r    <= 1'b0;
           tx_done_r <= 1'b1; // tx_done high for 1 cycle
         end

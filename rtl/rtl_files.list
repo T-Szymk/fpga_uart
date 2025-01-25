@@ -7,4 +7,5 @@
 ./rtl/uart_registers.v
 ./rtl/uart_reg_ctrl.v
 ./rtl/fifo.v
+./rtl/edge_detector.v
 ./rtl/uart_top.v
