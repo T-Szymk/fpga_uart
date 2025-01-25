@@ -5,14 +5,14 @@
 -- File       : uart_reg_ctrl.v
 -- Author(s)  : Thomas Szymkowiak
 -- Company    : TUNI
--- Created    : 2025-01-24
+-- Created    : 2025-01-25
 -- Design     : uart_reg_ctrl
 -- Platform   : -
 -- Standard   : Verilog '05
 --------------------------------------------------------------------------------
 -- Revisions:
 -- Date        Version  Author  Description
--- 2025-01-24  1.0      TZS     Created
+-- 2025-01-25  1.0      TZS     Created
 ------------------------------------------------------------------------------*/
 /***  DESCRIPTION ***/
 //! Module containing control logic to manage signals interfacing with UART
@@ -88,6 +88,13 @@ module uart_reg_ctrl #(
   localparam integer RegWidth        = 32;
   localparam integer RegCount        =  4;
 
+  // constants
+  // ToDo: Move to Header!
+  localparam [RegBusAddrWidth-1:0] UART_STAT_ADDR = 0;
+  localparam [RegBusAddrWidth-1:0] UART_CTRL_ADDR = 1;
+  localparam [RegBusAddrWidth-1:0] UART_TX_ADDR   = 2;
+  localparam [RegBusAddrWidth-1:0] UART_RX_ADDR   = 3;
+
   /* signals and type declarations ********************************************/
 
   // grouped registers outputs
@@ -156,13 +163,12 @@ module uart_reg_ctrl #(
 
     end else begin
 
-      // status and Rx are read only, so will continuously be written by the peripheral
+      // status is read only, so will continuously be written by the peripheral
       stat_reg_periph_wr_en_r <= 1'b1;
-      rx_reg_periph_wr_en_r   <= 1'b1;
-      // Tx is never written by the peripheral
+      // Default assignment for other reg
       tx_reg_periph_wr_en_r   <= 1'b0;
-      // Default assignment for control reg
       ctrl_reg_periph_wr_en_r <= 1'b0;
+      rx_reg_periph_wr_en_r   <= 1'b0;
 
       // clear start bit when tx done is signalled
       if (tx_done_i == 1'b1) begin
@@ -170,6 +176,11 @@ module uart_reg_ctrl #(
         ctrl_reg_periph_wr_en_r <= 1'b1;
       end else begin
         tx_start_in_r           <= 1'b0;
+      end
+
+      // only write new data to Rx reg when it a full word has been received
+      if (rx_done_i == 1'b1) begin
+        rx_reg_periph_wr_en_r <= 1'b1;
       end
 
     end
@@ -194,6 +205,7 @@ module uart_reg_ctrl #(
     tx_reg_data_i_s   = tx_reg_data_o_s;
     rx_reg_data_i_s   = rx_reg_data_o_s;
 
+    // route signals FROM UART
     stat_reg_data_i_s[ 0] = tx_done_i;
     stat_reg_data_i_s[ 1] = tx_busy_i;
     stat_reg_data_i_s[ 8] = tx_fifo_empty_i;
@@ -208,6 +220,20 @@ module uart_reg_ctrl #(
     stat_reg_data_i_s[25] = rx_fifo_nearly_empty_i;
     stat_reg_data_i_s[26] = rx_fifo_full_i;
     stat_reg_data_i_s[27] = rx_fifo_nearly_full_i;
+
+    // Manage rx full
+    if (rx_done_i == 1'b1) begin
+      stat_reg_data_i_s[23] = 1'b1;
+    end else if (rd_en_cpu_i == 1'b1 && cpu_addr_i == UART_RX_ADDR) begin
+      stat_reg_data_i_s[23] = 1'b0;
+    end
+
+    // Manage tx full
+    if (tx_done_i == 1'b1) begin
+      stat_reg_data_i_s[7] = 1'b0;
+    end else if (wr_en_cpu_i == 1'b1 && cpu_addr_i == UART_TX_ADDR) begin
+      stat_reg_data_i_s[7] = 1'b1;
+    end
 
     ctrl_reg_data_i_s[1]  = tx_start_in_r;
 
@@ -225,7 +251,7 @@ module uart_reg_ctrl #(
   assign {rx_reg_data_o_s,   tx_reg_data_o_s,
           ctrl_reg_data_o_s, stat_reg_data_o_s} = periph_data_out_s;
 
-  // extract fields from registers
+  // route signals TO UART
   assign baud_sel_o = ctrl_reg_data_o_s[31:30];
   assign tx_en_o    = ctrl_reg_data_o_s[0];
   assign tx_start_o = ctrl_reg_data_o_s[1];
