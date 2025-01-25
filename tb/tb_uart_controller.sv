@@ -18,13 +18,14 @@
 /*
 Test cases covered:
 - loopback test (rx/tx tied)
+ToDo:
 - asynchronous communication (tx and rx running at different frequencies with the same Baud Rate)
 - tests at each baud rate
 - each data/stop length value covered
 - tx parity checking tested
 - start/stop/parity error checks
 - test over reset
-- baudrate monitoring 
+- baudrate monitoring
 - partial transmission + recovery testing
 */
 /*----------------------------------------------------------------------------*/

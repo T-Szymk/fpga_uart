@@ -45,7 +45,7 @@ module uart_top #(
   output wire [ CPU_DATA_WIDTH-1:0] cpu_data_o   //! Read data TO CPU bus
 );
 
-  /* constants ************************************************************************************/
+  /* constants ****************************************************************/
   localparam integer MAX_UART_DATA_W  = 8;                             //! Maximum width of UART data 
   localparam integer STOP_CONF_W      = 2;                             //! Width of stop bit configuration field
   localparam integer DATA_CONF_W      = 2;                             //! Width of data bit configuration field
@@ -54,8 +54,9 @@ module uart_top #(
   localparam integer N_BAUD_RATE_VALS = 4;                             //! Number of Baud rate values
   localparam integer SAMPLE_COUNT_W   = 4;                             //! Width of sample counter within Tx and Rx module (sampled 16 times) = $clog2(16)
 
-  /* signals and type declarations ****************************************************************/
+  /* signals and type declarations ********************************************/
 
+  // connecting signals
   wire                       tx_done_s;
   wire                       tx_busy_s;
   wire                       rx_done_s;
@@ -83,7 +84,7 @@ module uart_top #(
   wire [   TOTAL_CONF_W-1:0] rx_conf_s;
   wire                       rx_fifo_en_s;
 
-  /* Components ***********************************************************************************/
+  /* Components ***************************************************************/
 
   // UART Register Controller
   uart_reg_ctrl #(
@@ -152,8 +153,8 @@ module uart_top #(
     .rx_en_i         ( rx_en_s            ),
     .uart_rx_i       ( uart_rx_i          ),
     .rx_conf_i       ( rx_conf_s          ),
-    .rx_fifo_en_i    ( rx_conf_s          ),
-    .rx_fifo_full_i  ( rx_fifo_en_s       ),
+    .rx_fifo_en_i    ( rx_fifo_en_s       ),
+    .rx_fifo_full_i  ( rx_fifo_full_s     ),
     .tx_done_o       ( tx_done_s          ),
     .tx_busy_o       ( tx_busy_s          ),
     .uart_tx_o       ( uart_tx_o          ),
@@ -165,6 +166,18 @@ module uart_top #(
     .rx_data_o       ( rx_data_s          ),
     .rx_fifo_push_o  ( /* UNCONNECTED */  )
   );
+
+  // ToDo: Add FIFOs HERE!
+
+  /* Assignments **************************************************************/
+  assign rx_fifo_full_s         = 1'b0;
+  assign rx_fifo_nearly_full_s  = 1'b0;
+  assign rx_fifo_empty_s        = 1'b0;
+  assign rx_fifo_nearly_empty_s = 1'b0;
+  assign tx_fifo_full_s         = 1'b0;
+  assign tx_fifo_nearly_full_s  = 1'b0;
+  assign tx_fifo_empty_s        = 1'b0;
+  assign tx_fifo_nearly_empty_s = 1'b0;
 
 
 endmodule

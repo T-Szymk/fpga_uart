@@ -75,11 +75,11 @@ module uart_registers #(
   wire [REG_WIDTH-1:0] rx_reg_data_periph_i_s;
 
   // output data
-  reg [REG_WIDTH-1:0] stat_reg_data_o_s;
-  reg [REG_WIDTH-1:0] ctrl_reg_data_o_s;
-  reg [REG_WIDTH-1:0] tx_reg_data_o_s;
-  reg [REG_WIDTH-1:0] rx_reg_data_o_s;
-  reg [REG_WIDTH-1:0] cpu_data_o_s;
+  wire [REG_WIDTH-1:0] stat_reg_data_o_s;
+  wire [REG_WIDTH-1:0] ctrl_reg_data_o_s;
+  wire [REG_WIDTH-1:0] tx_reg_data_o_s;
+  wire [REG_WIDTH-1:0] rx_reg_data_o_s;
+  reg  [REG_WIDTH-1:0] cpu_data_o_s;
 
   // assignments
 

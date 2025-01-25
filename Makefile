@@ -25,7 +25,7 @@ RTL_DIR         ?= $(CURR_DIR)/rtl
 TB_DIR          ?= $(CURR_DIR)/tb
 SIM_DIR         ?= $(CURR_DIR)/sim
 
-TOP_MODULE  ?= tb_uart_controller
+TOP_MODULE  ?= tb_uart_top
 
 DO_FILE ?= run.do
 

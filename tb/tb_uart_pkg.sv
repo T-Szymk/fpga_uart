@@ -28,9 +28,17 @@ package tb_uart_pkg;
   localparam int unsigned DataWidthMax = 8;
   localparam int unsigned DataWidthMin = 5;
 
-  localparam int unsigned StopCfgWidth = 2;                                //! Width of stop bit configuration field
-  localparam int unsigned DataCfgWidth = 2;                                //! Width of data bit configuration field
-  localparam int unsigned TotalCfgWidth = StopCfgWidth + DataCfgWidth + 1; //! Total width of configuration data bits sent to Tx and Rx modules
+  localparam int unsigned StopCfgWidth  = 2;
+  localparam int unsigned DataCfgWidth  = 2;
+  localparam int unsigned TotalCfgWidth = StopCfgWidth + DataCfgWidth + 1;
+
+  localparam int unsigned CPUAddrWidth  = 2;
+  localparam int unsigned CPUDataWidth  = 32;
+
+  localparam bit [CPUAddrWidth-1:0] UartStatusAddr  = 'd0;
+  localparam bit [CPUAddrWidth-1:0] UartControlAddr = 'd1;
+  localparam bit [CPUAddrWidth-1:0] UartTxAddr      = 'd2;
+  localparam bit [CPUAddrWidth-1:0] UartRxAddr      = 'd3;
 
   typedef enum bit [1:0] {
     BAUD9600   = 2'b00,

@@ -82,13 +82,13 @@ module uart_reg_ctrl #(
   output wire [ CPU_DATA_WIDTH-1:0] cpu_data_o              //! Read data TO CPU bus
 );
 
-  /* constants ************************************************************************************/
+  /* constants ****************************************************************/
 
   localparam integer RegBusAddrWidth =  2;
   localparam integer RegWidth        = 32;
   localparam integer RegCount        =  4;
 
-  /* signals and type declarations ****************************************************************/
+  /* signals and type declarations ********************************************/
 
   // grouped registers outputs
   wire [(RegCount * CPU_DATA_WIDTH)-1:0] periph_data_out_s;
@@ -109,10 +109,7 @@ module uart_reg_ctrl #(
   reg [RegWidth-1:0] rx_reg_data_i_s;
 
   // Control register fields
-  reg                tx_start_in_r;
-
-  // Tx data fields
-  wire [MAX_UART_DATA_W-1:0] tx_data_s;
+  reg tx_start_in_r;
 
   // Peripheral write enable control word
   wire [RegCount-1:0] wr_en_periph_s;
@@ -123,7 +120,7 @@ module uart_reg_ctrl #(
   reg tx_reg_periph_wr_en_r;
   reg rx_reg_periph_wr_en_r;
 
-  /* Components ***********************************************************************************/
+  /* Components ***************************************************************/
 
   // UART Register Component
   uart_registers #(
@@ -144,7 +141,7 @@ module uart_reg_ctrl #(
     .periph_data_o  ( periph_data_out_s )
   );
 
-  /* Periph Write Enable Logic ********************************************************************/
+  /* Periph Write Enable Logic ************************************************/
 
   always @(posedge clk_i) begin : sync_wr_en_periph
 
@@ -155,7 +152,7 @@ module uart_reg_ctrl #(
       tx_reg_periph_wr_en_r   <= 1'b0;
       rx_reg_periph_wr_en_r   <= 1'b0;
 
-      tx_start_in_r              <= 1'b0;
+      tx_start_in_r           <= 1'b0;
 
     end else begin
 
@@ -178,7 +175,7 @@ module uart_reg_ctrl #(
     end
   end
 
-  /* assignments **********************************************************************************/
+  /* assignments **************************************************************/
 
   // Default/Unimplemented function assignments
   assign tx_fifo_push_o = 1'b0;
@@ -192,10 +189,10 @@ module uart_reg_ctrl #(
   always @(*) begin
 
     // default assignments
-    stat_reg_data_i_s = {RegWidth{1'b0}};
-    ctrl_reg_data_i_s = {RegWidth{1'b0}};
-    tx_reg_data_i_s   = {RegWidth{1'b0}};
-    rx_reg_data_i_s   = {RegWidth{1'b0}};
+    stat_reg_data_i_s = stat_reg_data_o_s;
+    ctrl_reg_data_i_s = ctrl_reg_data_o_s;
+    tx_reg_data_i_s   = tx_reg_data_o_s;
+    rx_reg_data_i_s   = rx_reg_data_o_s;
 
     stat_reg_data_i_s[ 0] = tx_done_i;
     stat_reg_data_i_s[ 1] = tx_busy_i;
@@ -219,8 +216,8 @@ module uart_reg_ctrl #(
   end
 
   // concat reg groups
-  assign periph_data_in_s = {stat_reg_data_i_s, ctrl_reg_data_i_s,
-                             tx_reg_data_i_s, rx_reg_data_i_s};
+  assign periph_data_in_s = {rx_reg_data_i_s,   tx_reg_data_i_s,
+                             ctrl_reg_data_i_s, stat_reg_data_i_s};
 
   // OUTPUTS (Reg -> Peripheral)
 
