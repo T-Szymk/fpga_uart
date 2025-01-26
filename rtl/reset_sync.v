@@ -24,18 +24,18 @@
 module reset_sync #(
   parameter SYNC_REG_COUNT = 3
 ) (
-  input  wire dest_clk_i,
-  input  wire arstn_i,
-  output wire rst_o
+  input  wire dst_clk_i,  //! Clock from destination clock domain
+  input  wire arstn_i,    //! Active-lo asynchronous reset
+  output wire rst_o       //! Active-hi synchronous reset
 );
 
   reg [SYNC_REG_COUNT-1:0] sync_reg_r;
 
-  always @(posedge dest_clk_i or negedge arstn_i) begin
+  always @(posedge dst_clk_i or negedge arstn_i) begin
     if (~arstn_i) begin
-      sync_reg_r <= {SYNC_REG_COUNT{1'b0}};
+      sync_reg_r <= {SYNC_REG_COUNT{1'b1}};
     end else begin
-      sync_reg_r <= {sync_reg_r[SYNC_REG_COUNT-2:0], 1'b1};
+      sync_reg_r <= {sync_reg_r[SYNC_REG_COUNT-2:0], 1'b0};
     end
   end
 

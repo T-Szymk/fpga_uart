@@ -3,3 +3,4 @@
 ./tb/tb_uart_controller.sv
 ./tb/tb_fifo.sv
 ./tb/tb_uart_top.sv
+./tb/tb_fpga_uart_top_arty_a7.sv

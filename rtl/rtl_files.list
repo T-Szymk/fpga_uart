@@ -8,4 +8,7 @@
 ./rtl/uart_reg_ctrl.v
 ./rtl/fifo.v
 ./rtl/edge_detector.v
+./rtl/reset_sync.v
+./rtl/sync_1bit.v
 ./rtl/uart_top.v
+./rtl/uart_test_module.v
